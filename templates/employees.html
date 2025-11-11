@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Employee Overview</h2>
+
+<form method="get" action="{{ url_for('employees') }}" style="margin-bottom: 20px;">
+  <label for="search_name">Search by Name:</label>
+  <input type="text" id="search_name" name="search_name" value="{{ search_name }}" placeholder="Enter employee name">
+
+  <label for="department">Department:</label>
+  <select id="department" name="department">
+    <option value="">All Departments</option>
+    {% for dept in departments %}
+      <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>{{ dept }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">Filter</button>
+  <a href="{{ url_for('employees') }}">Reset</a>
+</form>
+
+<table border="1" cellpadding="8" cellspacing="0">
+  <tr>
+    <th>SSN</th>
+    <th>Name</th>
+    <th>Department</th>
+    <th>Dependents</th>
+    <th>Projects</th>
+    <th>Total Hours</th>
+  </tr>
+  {% for emp in employees %}
+  <tr>
+    <td>{{ emp[0] }}</td>
+    <td>{{ emp[1] }}</td>
+    <td>{{ emp[2] }}</td>
+    <td>{{ emp[3] }}</td>
+    <td>{{ emp[4] or 'None' }}</td>
+    <td>{{ emp[5] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<p><a href="{{ url_for('home') }}">Back to Home</a></p>
+{% endblock %}
