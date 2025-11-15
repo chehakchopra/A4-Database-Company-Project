@@ -1,57 +1,97 @@
 {% extends "layout.html" %}
 {% block content %}
+
 <h2>Employee Overview</h2>
 
-<form method="get" action="{{ url_for('employees') }}" style="margin-bottom: 20px;">
-  <label for="search_name">Search by Name:</label>
-  <input type="text" id="search_name" name="search_name" value="{{ search_name }}" placeholder="Enter employee name">
+<p><a href="{{ url_for('add_employee') }}" style="font-weight:bold;">+ Add Employee</a></p>
 
-  <label for="department">Department:</label>
-  <select id="department" name="department">
-    <option value="">All Departments</option>
-    {% for dept in departments %}
-      <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>{{ dept }}</option>
+<div style="border:1px solid #ddd; padding:15px; border-radius:6px; background:#fafafa; margin-bottom:20px;">
+
+  <form method="get" action="{{ url_for('employees') }}">
+    
+    <div style="display:flex; flex-wrap:wrap; gap:20px;">
+
+      <div>
+        <label>Search by Name:</label><br>
+        <input type="text" name="search_name" value="{{ search_name }}" placeholder="Enter employee name">
+      </div>
+
+      <div>
+        <label>Department:</label><br>
+        <select name="department">
+          <option value="">All Departments</option>
+          {% for dept in departments %}
+            <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>{{ dept }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label>Sort By:</label><br>
+        <select name="sort_by">
+          <option value="">None</option>
+          <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
+          <option value="hours" {% if sort_by == "hours" %}selected{% endif %}>Total Hours</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Direction:</label><br>
+        <select name="sort_dir">
+          <option value="asc" {% if sort_dir == "asc" %}selected{% endif %}>Ascending</option>
+          <option value="desc" {% if sort_dir == "desc" %}selected{% endif %}>Descending</option>
+        </select>
+      </div>
+
+      <div style="align-self:flex-end;">
+        <button type="submit" style="padding:6px 14px;">Apply</button>
+      </div>
+
+    </div>
+
+    <p style="margin-top:10px;">
+      <a href="{{ url_for('employees') }}">Reset Filters</a>
+    </p>
+
+  </form>
+</div>
+
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; font-size:14px;">
+  <thead style="background:#0074D9; color:white; text-align:left;">
+    <tr>
+      <th>SSN</th>
+      <th>Name</th>
+      <th>Department</th>
+      <th>Dependents</th</th>
+      <th>Projects</th>
+      <th>Total Hours</th>
+      <th style="text-align:center;">Actions</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for emp in employees %}
+    <tr>
+      <td>{{ emp[0] }}</td>
+      <td>{{ emp[1] }}</td>
+      <td>{{ emp[2] }}</td>
+      <td>{{ emp[3] }}</td>
+      <td>{{ emp[4] or 'None' }}</td>
+      <td>{{ emp[5] }}</td>
+      <td style="text-align:center;">
+        <a href="{{ url_for('edit_employee', ssn=emp[0]) }}">Edit</a> |
+        <a href="{{ url_for('delete_employee', ssn=emp[0]) }}"
+           onclick="return confirm('Delete this employee?');">
+           Delete
+        </a>
+      </td>
+    </tr>
     {% endfor %}
-  </select>
-
-  <label for="sort_by">Sort:</label>
-  <select id="sort_by" name="sort_by">
-    <option value="">None</option>
-    <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
-    <option value="hours" {% if sort_by == "hours" %}selected{% endif %}>Total Hours</option>
-  </select>
-
-  <label for="sort_dir">By:</label>
-  <select id="sort_dir" name="sort_dir">
-    <option value="asc" {% if sort_dir == "asc" %}selected{% endif %}>Ascending</option>
-    <option value="desc" {% if sort_dir == "desc" %}selected{% endif %}>Descending</option>
-  </select>
-
-  <button type="submit">Filter</button>
-
-  <a href="{{ url_for('employees') }}">Reset</a>
-</form>
-
-<table border="1" cellpadding="8" cellspacing="0">
-  <tr>
-    <th>SSN</th>
-    <th>Name</th>
-    <th>Department</th>
-    <th>Dependents</th>
-    <th>Projects</th>
-    <th>Total Hours</th>
-  </tr>
-  {% for emp in employees %}
-  <tr>
-    <td>{{ emp[0] }}</td>
-    <td>{{ emp[1] }}</td>
-    <td>{{ emp[2] }}</td>
-    <td>{{ emp[3] }}</td>
-    <td>{{ emp[4] or 'None' }}</td>
-    <td>{{ emp[5] }}</td>
-  </tr>
-  {% endfor %}
+  </tbody>
 </table>
 
-<p><a href="{{ url_for('home') }}">Back to Home</a></p>
+<p style="margin-top:15px;">
+  <a href="{{ url_for('home') }}">Back to Home</a>
+</p>
+
 {% endblock %}

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Employee</title>
+    <style>
+        body { font-family: Arial; background: #f5f5f5; }
+        .container {
+            width: 500px; margin: auto; margin-top: 40px;
+            background: white; padding: 25px; border-radius: 8px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        label { display: block; margin-top: 12px; font-weight: bold; }
+        input, select {
+            width: 100%; padding: 8px; margin-top: 6px;
+            border: 1px solid #ddd; border-radius: 4px;
+        }
+        button { margin-top: 20px; padding: 10px 15px; width: 100%;
+            background: #007bff; color: white; border: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Add Employee</h2>
+
+    <form method="POST">
+        <label>First Name</label>
+        <input name="fname" required>
+
+        <label>Middle Initial</label>
+        <input name="minit" maxlength="1" required>
+
+        <label>Last Name</label>
+        <input name="lname" required>
+
+        <label>SSN</label>
+        <input name="ssn" required maxlength="9">
+
+        <label>Address</label>
+        <input name="address" required>
+
+        <label>Sex</label>
+        <select name="sex">
+            <option>M</option>
+            <option>F</option>
+        </select>
+
+        <label>Salary</label>
+        <input name="salary" type="number" required>
+
+        <label>Supervisor</label>
+        <select name="super_ssn">
+            <option value="">None</option>
+            {% for s in supervisors %}
+                <option value="{{ s[0] }}">{{ s[1] }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Department</label>
+        <select name="dno" required>
+            {% for d in departments %}
+                <option value="{{ d[0] }}">{{ d[1] }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Birth Date</label>
+        <input type="date" name="bdate" required>
+
+        <label>Employment Date</label>
+        <input type="date" name="empdate" required>
+
+        <button type="submit">Add Employee</button>
+    </form>
+</div>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash  # noqa E501
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
@@ -7,20 +7,18 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
 
+#DB Connection
 def get_db_connection():
-    # DB Connection
     conn = psycopg2.connect(
         host="localhost",
-        dbname="company_db",       
-        user="postgres",            
-        password="12345",   
+        dbname="company_db",
+        user="postgres",
+        password="12345",
         port="5432"
     )
     return conn
 
-
 def login_required(f):
-    # Login Reqd
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user_id" not in session:
@@ -28,9 +26,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
 @app.route("/", methods=["GET", "POST"])
-# Login
 def login():
     if request.method == "POST":
         username = request.form["username"]
@@ -40,7 +36,8 @@ def login():
         cur = conn.cursor()
         cur.execute(
             "SELECT id, password_hash FROM app_user WHERE username = %s",
-            (username,))
+            (username,)
+        )
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -55,11 +52,9 @@ def login():
 
     return render_template("login.html")
 
-
 @app.route("/home")
 @login_required
 def home():
-    # Homepage
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM employee;")
@@ -67,23 +62,23 @@ def home():
     cur.close()
     conn.close()
 
-    return render_template("home.html",
-                           username=session["username"],
-                           total_employees=total_employees)
-
+    return render_template(
+        "home.html",
+        username=session["username"],
+        total_employees=total_employees
+    )
 
 @app.route("/employees", methods=["GET"])
 @login_required
 def employees():
-    # Employee Overview
+
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Get filters
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
     sort_by = request.args.get("sort_by", "")
-    sort_dir = request.args.get("sort_dir", "")
+    sort_dir = request.args.get("sort_dir", "asc")
 
     query = """
         SELECT
@@ -118,15 +113,17 @@ def employees():
         GROUP BY e.ssn, e.fname, e.lname, d.dname
     """
 
+    # Sorting
     if sort_by:
-        sort_condition = " ORDER BY "
+        query += " ORDER BY "
         if sort_by == "hours":
-            sort_condition += "total_hours"
+            query += "total_hours "
         else:
-            sort_condition += "e.fname"
-        if sort_dir == "desc":
-            sort_condition += " DESC"
-        query += sort_condition + ";"
+            query += "full_name "
+
+        query += "DESC " if sort_dir == "desc" else "ASC "
+    else:
+        query += " ORDER BY full_name ASC "
 
     cur.execute(query, params)
     employees = cur.fetchall()
@@ -147,18 +144,17 @@ def employees():
         sort_dir=sort_dir
     )
 
-
 @app.route("/projects", methods=["GET"])
 @login_required
 def projects():
-    # Project Overview
+
     conn = get_db_connection()
     cur = conn.cursor()
 
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
     sort_by = request.args.get("sort_by", "")
-    sort_dir = request.args.get("sort_dir", "")
+    sort_dir = request.args.get("sort_dir", "asc")
 
     query = """
         SELECT
@@ -186,19 +182,14 @@ def projects():
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
-    query += """
-        GROUP BY p.pnumber, p.pname, d.dname
-    """
+    query += " GROUP BY p.pnumber, p.pname, d.dname "
 
-    if sort_by:
-        sort_condition = " ORDER BY "
-        if sort_by == "hours":
-            sort_condition += "total_hours"
-        else:
-            sort_condition += "total_employees"
-        if sort_dir == "desc":
-            sort_condition += " DESC"
-        query += sort_condition + ";"
+    if sort_by == "hours":
+        query += " ORDER BY total_hours "
+    else:
+        query += " ORDER BY total_employees "
+
+    query += "DESC " if sort_dir == "desc" else "ASC "
 
     cur.execute(query, params)
     projects = cur.fetchall()
@@ -220,14 +211,137 @@ def projects():
     )
 
 
+@app.route("/employee/add", methods=["GET", "POST"])
+@login_required
+def add_employee():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
+    departments = cur.fetchall()
+
+    cur.execute("SELECT ssn, fname || ' ' || lname FROM employee ORDER BY fname;")
+    supervisors = cur.fetchall()
+
+    if request.method == "POST":
+        fname = request.form["fname"]
+        minit = request.form["minit"]
+        lname = request.form["lname"]
+        ssn = request.form["ssn"]
+        address = request.form["address"]
+        sex = request.form["sex"]
+        salary = request.form["salary"]
+        super_ssn = request.form["super_ssn"] or None
+        dno = request.form["dno"]
+        bdate = request.form["bdate"]
+        empdate = request.form["empdate"]
+
+        try:
+            cur.execute("""
+                INSERT INTO employee
+                (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate))
+
+            conn.commit()
+            flash("Employee added successfully!", "success")
+            return redirect(url_for("employees"))
+
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error adding employee: {e}", "danger")
+
+    cur.close()
+    conn.close()
+
+    return render_template("add_employee.html",
+                           departments=departments,
+                           supervisors=supervisors)
+
+
+@app.route("/employee/<ssn>/edit", methods=["GET", "POST"])
+@login_required
+def edit_employee(ssn):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM employee WHERE ssn = %s;", (ssn,))
+    emp = cur.fetchone()
+
+    if not emp:
+        flash("Employee not found.", "danger")
+        return redirect(url_for("employees"))
+
+    cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
+    departments = cur.fetchall()
+
+    cur.execute("SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;", (ssn,))
+    supervisors = cur.fetchall()
+
+    if request.method == "POST":
+        address = request.form["address"]
+        salary = request.form["salary"]
+        dno = request.form["dno"]
+        super_ssn = request.form["super_ssn"] or None
+
+        try:
+            cur.execute("""
+                UPDATE employee
+                SET address = %s, salary = %s, dno = %s, super_ssn = %s
+                WHERE ssn = %s;
+            """, (address, salary, dno, super_ssn, ssn))
+
+            conn.commit()
+            flash("Employee updated successfully!", "success")
+            return redirect(url_for("employees"))
+
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error updating employee: {e}", "danger")
+
+    cur.close()
+    conn.close()
+
+    return render_template("edit_employee.html",
+                           emp=emp,
+                           departments=departments,
+                           supervisors=supervisors)
+
+
+@app.route("/employee/<ssn>/delete")
+@login_required
+def delete_employee(ssn):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT 1 FROM dependent WHERE essn = %s LIMIT 1;", (ssn,))
+    dep = cur.fetchone()
+
+    cur.execute("SELECT 1 FROM works_on WHERE essn = %s LIMIT 1;", (ssn,))
+    work = cur.fetchone()
+
+    cur.execute("SELECT 1 FROM department WHERE mgr_ssn = %s LIMIT 1;", (ssn,))
+    mgr = cur.fetchone()
+
+    if dep or work or mgr:
+        flash("Cannot delete employee due to dependencies.", "danger")
+        return redirect(url_for("employees"))
+
+    try:
+        cur.execute("DELETE FROM employee WHERE ssn = %s;", (ssn,))
+        conn.commit()
+        flash("Employee deleted.", "info")
+    except Exception as e:
+        conn.rollback()
+        flash("Error deleting employee: " + str(e), "danger")
+
+    return redirect(url_for("employees"))
+
 @app.route("/logout")
 def logout():
-    # Logout
     session.clear()
-    flash("You have been logged out.", "info")
     return redirect(url_for("login"))
 
 
 if __name__ == "__main__":
-    # Run app.py
     app.run(debug=True)
