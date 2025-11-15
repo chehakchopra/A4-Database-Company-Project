@@ -82,6 +82,8 @@ def employees():
     # Get filters
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "")
 
     query = """
         SELECT
@@ -114,8 +116,17 @@ def employees():
 
     query += """
         GROUP BY e.ssn, e.fname, e.lname, d.dname
-        ORDER BY e.fname;
     """
+
+    if sort_by:
+        sort_condition = " ORDER BY "
+        if sort_by == "hours":
+            sort_condition += "total_hours"
+        else:
+            sort_condition += "e.fname"
+        if sort_dir == "desc":
+            sort_condition += " DESC"
+        query += sort_condition
 
     cur.execute(query, params)
     employees = cur.fetchall()
@@ -131,7 +142,9 @@ def employees():
         employees=employees,
         departments=departments,
         selected_dept=selected_dept,
-        search_name=search_name
+        search_name=search_name,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
 

@@ -14,7 +14,21 @@
     {% endfor %}
   </select>
 
+  <label for="sort_by">Sort:</label>
+  <select id="sort_by" name="sort_by">
+    <option value="">None</option>
+    <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
+    <option value="hours" {% if sort_by == "hours" %}selected{% endif %}>Total Hours</option>
+  </select>
+
+  <label for="sort_dir">By:</label>
+  <select id="sort_dir" name="sort_dir">
+    <option value="asc" {% if sort_dir == "asc" %}selected{% endif %}>Ascending</option>
+    <option value="desc" {% if sort_dir == "desc" %}selected{% endif %}>Descending</option>
+  </select>
+
   <button type="submit">Filter</button>
+
   <a href="{{ url_for('employees') }}">Reset</a>
 </form>
 
