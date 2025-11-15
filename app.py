@@ -126,7 +126,7 @@ def employees():
             sort_condition += "e.fname"
         if sort_dir == "desc":
             sort_condition += " DESC"
-        query += sort_condition
+        query += sort_condition + ";"
 
     cur.execute(query, params)
     employees = cur.fetchall()
@@ -157,6 +157,8 @@ def projects():
 
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "")
 
     query = """
         SELECT
@@ -186,8 +188,17 @@ def projects():
 
     query += """
         GROUP BY p.pnumber, p.pname, d.dname
-        ORDER BY p.pnumber;
     """
+
+    if sort_by:
+        sort_condition = " ORDER BY "
+        if sort_by == "hours":
+            sort_condition += "total_hours"
+        else:
+            sort_condition += "total_employees"
+        if sort_dir == "desc":
+            sort_condition += " DESC"
+        query += sort_condition + ";"
 
     cur.execute(query, params)
     projects = cur.fetchall()
@@ -203,7 +214,9 @@ def projects():
         projects=projects,
         departments=departments,
         search_name=search_name,
-        selected_dept=selected_dept
+        selected_dept=selected_dept,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
 
