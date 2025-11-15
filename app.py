@@ -1,13 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash  # noqa E501
 import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey" 
+app.secret_key = "supersecretkey"
 
-#DB Connection
+
 def get_db_connection():
+    # DB Connection
     conn = psycopg2.connect(
         host="localhost",
         dbname="company_db",       
@@ -17,8 +18,9 @@ def get_db_connection():
     )
     return conn
 
-#Login Reqd
+
 def login_required(f):
+    # Login Reqd
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user_id" not in session:
@@ -26,8 +28,9 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-#Login
+
 @app.route("/", methods=["GET", "POST"])
+# Login
 def login():
     if request.method == "POST":
         username = request.form["username"]
@@ -35,7 +38,9 @@ def login():
 
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, password_hash FROM app_user WHERE username = %s", (username,))
+        cur.execute(
+            "SELECT id, password_hash FROM app_user WHERE username = %s",
+            (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -50,10 +55,11 @@ def login():
 
     return render_template("login.html")
 
-#Homepage
+
 @app.route("/home")
 @login_required
 def home():
+    # Homepage
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM employee;")
@@ -61,18 +67,23 @@ def home():
     cur.close()
     conn.close()
 
-    return render_template("home.html", username=session["username"], total_employees=total_employees)
+    return render_template("home.html",
+                           username=session["username"],
+                           total_employees=total_employees)
 
-# Employee Overview
+
 @app.route("/employees", methods=["GET"])
 @login_required
 def employees():
+    # Employee Overview
     conn = get_db_connection()
     cur = conn.cursor()
 
     # Get filters
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "")
 
     query = """
         SELECT
@@ -105,8 +116,17 @@ def employees():
 
     query += """
         GROUP BY e.ssn, e.fname, e.lname, d.dname
-        ORDER BY e.fname;
     """
+
+    if sort_by:
+        sort_condition = " ORDER BY "
+        if sort_by == "hours":
+            sort_condition += "total_hours"
+        else:
+            sort_condition += "e.fname"
+        if sort_dir == "desc":
+            sort_condition += " DESC"
+        query += sort_condition + ";"
 
     cur.execute(query, params)
     employees = cur.fetchall()
@@ -122,18 +142,23 @@ def employees():
         employees=employees,
         departments=departments,
         selected_dept=selected_dept,
-        search_name=search_name
+        search_name=search_name,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
-#Project Overview
+
 @app.route("/projects", methods=["GET"])
 @login_required
 def projects():
+    # Project Overview
     conn = get_db_connection()
     cur = conn.cursor()
 
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "")
 
     query = """
         SELECT
@@ -163,8 +188,17 @@ def projects():
 
     query += """
         GROUP BY p.pnumber, p.pname, d.dname
-        ORDER BY p.pnumber;
     """
+
+    if sort_by:
+        sort_condition = " ORDER BY "
+        if sort_by == "hours":
+            sort_condition += "total_hours"
+        else:
+            sort_condition += "total_employees"
+        if sort_dir == "desc":
+            sort_condition += " DESC"
+        query += sort_condition + ";"
 
     cur.execute(query, params)
     projects = cur.fetchall()
@@ -180,16 +214,20 @@ def projects():
         projects=projects,
         departments=departments,
         search_name=search_name,
-        selected_dept=selected_dept
+        selected_dept=selected_dept,
+        sort_by=sort_by,
+        sort_dir=sort_dir
     )
 
-#Logout
+
 @app.route("/logout")
 def logout():
+    # Logout
     session.clear()
     flash("You have been logged out.", "info")
     return redirect(url_for("login"))
 
-#Run app.py
+
 if __name__ == "__main__":
+    # Run app.py
     app.run(debug=True)
