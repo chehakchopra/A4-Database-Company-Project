@@ -1,13 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash  # noqa E501
 import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey" 
+app.secret_key = "supersecretkey"
 
-#DB Connection
+
 def get_db_connection():
+    # DB Connection
     conn = psycopg2.connect(
         host="localhost",
         dbname="company_db",       
@@ -17,8 +18,9 @@ def get_db_connection():
     )
     return conn
 
-#Login Reqd
+
 def login_required(f):
+    # Login Reqd
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user_id" not in session:
@@ -26,8 +28,9 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-#Login
+
 @app.route("/", methods=["GET", "POST"])
+# Login
 def login():
     if request.method == "POST":
         username = request.form["username"]
@@ -35,7 +38,9 @@ def login():
 
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, password_hash FROM app_user WHERE username = %s", (username,))
+        cur.execute(
+            "SELECT id, password_hash FROM app_user WHERE username = %s",
+            (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
@@ -50,10 +55,11 @@ def login():
 
     return render_template("login.html")
 
-#Homepage
+
 @app.route("/home")
 @login_required
 def home():
+    # Homepage
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM employee;")
@@ -61,12 +67,15 @@ def home():
     cur.close()
     conn.close()
 
-    return render_template("home.html", username=session["username"], total_employees=total_employees)
+    return render_template("home.html",
+                           username=session["username"],
+                           total_employees=total_employees)
 
-# Employee Overview
+
 @app.route("/employees", methods=["GET"])
 @login_required
 def employees():
+    # Employee Overview
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -125,10 +134,11 @@ def employees():
         search_name=search_name
     )
 
-#Project Overview
+
 @app.route("/projects", methods=["GET"])
 @login_required
 def projects():
+    # Project Overview
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -183,13 +193,15 @@ def projects():
         selected_dept=selected_dept
     )
 
-#Logout
+
 @app.route("/logout")
 def logout():
+    # Logout
     session.clear()
     flash("You have been logged out.", "info")
     return redirect(url_for("login"))
 
-#Run app.py
+
 if __name__ == "__main__":
+    # Run app.py
     app.run(debug=True)
