@@ -7,7 +7,7 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
 
-#DB Connection
+# DB Connection
 def get_db_connection():
     conn = psycopg2.connect(
         host="localhost",
@@ -329,23 +329,34 @@ def delete_employee(ssn):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT 1 FROM dependent WHERE essn = %s LIMIT 1;", (ssn,))
-    dep = cur.fetchone()
-
-    cur.execute("SELECT 1 FROM works_on WHERE essn = %s LIMIT 1;", (ssn,))
-    work = cur.fetchone()
-
     cur.execute("SELECT 1 FROM department WHERE mgr_ssn = %s LIMIT 1;", (ssn,))
-    mgr = cur.fetchone()
+    dept_mgr = cur.fetchone()
 
-    if dep or work or mgr:
-        flash("Cannot delete employee due to dependencies.", "danger")
+    if dept_mgr:
+        flash("Cannot delete employee: They are a department manager.",
+              "danger")
+        return redirect(url_for("employees"))
+
+    cur.execute("SELECT 1 FROM employee WHERE super_ssn = %s LIMIT 1;",
+                (ssn,))
+    emp_mgr = cur.fetchone()
+
+    if emp_mgr:
+        flash("Cannot delete employee: They are a supervisor.", "danger")
         return redirect(url_for("employees"))
 
     try:
         cur.execute("DELETE FROM employee WHERE ssn = %s;", (ssn,))
         conn.commit()
         flash("Employee deleted.", "info")
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        detail = e.pgerror
+        if "works_on" in e.pgerror:
+            detail = "Employee is assigned to a project"
+        if "dependent" in e.pgerror:
+            detail = "Employee has dependents"
+        flash(f"Could not delete employee: {detail}.", "danger")
     except Exception as e:
         conn.rollback()
         flash("Error deleting employee: " + str(e), "danger")
