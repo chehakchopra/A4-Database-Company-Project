@@ -255,6 +255,11 @@ def add_employee():
             flash("Employee added successfully!", "success")
             return redirect(url_for("employees"))
 
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
+            flash(
+                "Error: An employee with the provided SSN already exists",
+                "danger")
         except Exception as e:
             conn.rollback()
             flash(f"Error adding employee: {e}", "danger")
