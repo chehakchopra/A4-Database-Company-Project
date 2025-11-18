@@ -33,7 +33,7 @@
         <select name="super_ssn">
             <option value="">None</option>
             {% for s in supervisors %}
-                <option value="{{ s[0] }}">{{ s[1] }}</option>
+                <option value="{{ s[0] }}" {% if s[0] == emp[7] %}selected{% endif %}>{{ s[1] }}</option>
             {% endfor %}
         </select>
 
