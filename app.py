@@ -18,6 +18,7 @@ def get_db_connection():
     )
     return conn
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -25,6 +26,7 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
+
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -52,6 +54,7 @@ def login():
 
     return render_template("login.html")
 
+
 @app.route("/home")
 @login_required
 def home():
@@ -67,6 +70,7 @@ def home():
         username=session["username"],
         total_employees=total_employees
     )
+
 
 @app.route("/employees", methods=["GET"])
 @login_required
@@ -113,17 +117,15 @@ def employees():
         GROUP BY e.ssn, e.fname, e.lname, d.dname
     """
 
-    # Sorting
-    if sort_by:
-        query += " ORDER BY "
-        if sort_by == "hours":
-            query += "total_hours "
-        else:
-            query += "full_name "
-
-        query += "DESC " if sort_dir == "desc" else "ASC "
-    else:
-        query += " ORDER BY full_name ASC "
+    # Sorting (by default, no sorting)
+    # ensure the valid sorting options are selected
+    if ((sort_by == "hours" or sort_by == "name") and
+            (sort_dir == "asc" or sort_dir == "desc")):
+        sort_condition = " ORDER BY "
+        sort_condition += "total_hours" if sort_by == "hours" else "e.fname"
+        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        query += sort_condition
+    query += ";"
 
     cur.execute(query, params)
     employees = cur.fetchall()
@@ -143,6 +145,7 @@ def employees():
         sort_by=sort_by,
         sort_dir=sort_dir
     )
+
 
 @app.route("/projects", methods=["GET"])
 @login_required
@@ -184,12 +187,15 @@ def projects():
 
     query += " GROUP BY p.pnumber, p.pname, d.dname "
 
-    if sort_by == "hours":
-        query += " ORDER BY total_hours "
-    else:
-        query += " ORDER BY total_employees "
-
-    query += "DESC " if sort_dir == "desc" else "ASC "
+    # Sorting (by default, no sorting)
+    # ensure the valid sorting options are selected
+    if ((sort_by == "hours" or sort_by == "headcount") and
+            (sort_dir == "asc" or sort_dir == "desc")):
+        sort_condition = " ORDER BY "
+        sort_condition += "total_hours" if sort_by == "hours" else "total_employees"
+        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        query += sort_condition
+    query += ";"
 
     cur.execute(query, params)
     projects = cur.fetchall()
@@ -220,7 +226,8 @@ def add_employee():
     cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
     departments = cur.fetchall()
 
-    cur.execute("SELECT ssn, fname || ' ' || lname FROM employee ORDER BY fname;")
+    cur.execute(
+        "SELECT ssn, fname || ' ' || lname FROM employee ORDER BY fname;")
     supervisors = cur.fetchall()
 
     if request.method == "POST":
@@ -275,7 +282,9 @@ def edit_employee(ssn):
     cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
     departments = cur.fetchall()
 
-    cur.execute("SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;", (ssn,))
+    cur.execute(
+        "SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;",
+        (ssn,))
     supervisors = cur.fetchall()
 
     if request.method == "POST":
@@ -336,6 +345,7 @@ def delete_employee(ssn):
         flash("Error deleting employee: " + str(e), "danger")
 
     return redirect(url_for("employees"))
+
 
 @app.route("/logout")
 def logout():

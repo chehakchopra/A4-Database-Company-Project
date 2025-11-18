@@ -1,35 +1,55 @@
 {% extends "layout.html" %}
 {% block content %}
+
 <h2>Project Overview</h2>
 
-<form method="get" action="{{ url_for('projects') }}" style="margin-bottom: 20px;">
-  <label for="search_name">Search by Project Name:</label>
-  <input type="text" id="search_name" name="search_name" value="{{ search_name }}" placeholder="Enter project name">
+<div style="border:1px solid #ddd; padding:15px; border-radius:6px; background:#fafafa; margin-bottom:20px;">
 
-  <label for="department">Department:</label>
-  <select id="department" name="department">
-    <option value="">All Departments</option>
-    {% for dept in departments %}
-      <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>{{ dept }}</option>
-    {% endfor %}
-  </select>
+  <form method="get" action="{{ url_for('projects') }}">
 
-  <label for="sort_by">Sort:</label>
-  <select id="sort_by" name="sort_by">
-    <option value="">None</option>
-    <option value="headcount" {% if sort_by == "headcount" %}selected{% endif %}>Headcount</option>
-    <option value="hours" {% if sort_by == "hours" %}selected{% endif %}>Total Hours</option>
-  </select>
+    <div style="display: flex; flex-wrap:wrap; gap:20px;">
 
-  <label for="sort_dir">By:</label>
-  <select id="sort_dir" name="sort_dir">
-    <option value="asc" {% if sort_dir == "asc" %}selected{% endif %}>Ascending</option>
-    <option value="desc" {% if sort_dir == "desc" %}selected{% endif %}>Descending</option>
-  </select>
+      <div style="display: flex; flex-direction: column;">
+        <label for="search_name">Search by Project Name:</label>
+        <input type="text" id="search_name" name="search_name" value="{{ search_name }}"
+          placeholder="Enter project name">
+      </div>
 
-  <button type="submit">Filter</button>
-  <a href="{{ url_for('projects') }}">Reset</a>
-</form>
+      <div style="display: flex; flex-direction: column;">
+        <label for="department">Department:</label>
+        <select id="department" name="department">
+          <option value="">All Departments</option>
+          {% for dept in departments %}
+          <option value="{{ dept }}" {% if dept==selected_dept %}selected{% endif %}>{{ dept }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <label for="sort_by">Sort By:</label>
+        <select id="sort_by" name="sort_by">
+          <option value="">None</option>
+          <option value="headcount" {% if sort_by=="headcount" %}selected{% endif %}>Headcount</option>
+          <option value="hours" {% if sort_by=="hours" %}selected{% endif %}>Total Hours</option>
+        </select>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <label for="sort_dir">Direction:</label>
+        <select id="sort_dir" name="sort_dir">
+          <option value="asc" {% if sort_dir=="asc" %}selected{% endif %}>Ascending</option>
+          <option value="desc" {% if sort_dir=="desc" %}selected{% endif %}>Descending</option>
+        </select>
+      </div>
+
+      <div style="align-self: flex-end;">
+        <button type="submit" style="padding:6px 14px;">Apply</button>
+      </div>
+    </div>
+    <a href="{{ url_for('projects') }}">Reset Filters</a>
+
+  </form>
+</div>
 
 <table border="1" cellpadding="8" cellspacing="0">
   <tr>
