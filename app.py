@@ -90,6 +90,7 @@ def employees():
             e.fname || ' ' || e.lname AS full_name,
             d.dname AS department,
             COUNT(DISTINCT dep.dependent_name) AS total_dependents,
+            COUNT(DISTINCT p.pname) AS num_projects,
             STRING_AGG(DISTINCT p.pname, ', ') AS projects,
             COALESCE(SUM(w.hours), 0) AS total_hours
         FROM employee e
