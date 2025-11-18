@@ -97,6 +97,7 @@ form a {
 
 .form-group label {
   display: block;
+  margin-top: 12px;
   margin-bottom: 5px;
   font-size: 14px;
   color: #333;
@@ -152,4 +153,46 @@ form a {
   background: #e7f1fb;
   color: #2760b0;
   border: 1px solid #a8c7f0;
+}
+
+/* Add/Edit CSS */
+.container {
+  max-width: 500px;
+  margin: auto;
+  margin-top: 40px;
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #ccc;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 15px;
+  width: 97%;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}
+
+input,
+select {
+  padding: 8px;
+  margin-top: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+input {
+  width: 95%;
+}
+
+select {
+  width: 97%;
+}
+
+.remove_background {
+  background: none;
+  box-shadow: none;
 }
