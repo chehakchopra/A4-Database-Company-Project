@@ -7,7 +7,6 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
 
-#DB Connection
 def get_db_connection():
     conn = psycopg2.connect(
         host="localhost",
@@ -25,6 +24,7 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
+
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -52,6 +52,7 @@ def login():
 
     return render_template("login.html")
 
+
 @app.route("/home")
 @login_required
 def home():
@@ -67,6 +68,7 @@ def home():
         username=session["username"],
         total_employees=total_employees
     )
+
 
 @app.route("/employees", methods=["GET"])
 @login_required
@@ -113,14 +115,12 @@ def employees():
         GROUP BY e.ssn, e.fname, e.lname, d.dname
     """
 
-    # Sorting
     if sort_by:
         query += " ORDER BY "
         if sort_by == "hours":
             query += "total_hours "
         else:
             query += "full_name "
-
         query += "DESC " if sort_dir == "desc" else "ASC "
     else:
         query += " ORDER BY full_name ASC "
@@ -143,6 +143,7 @@ def employees():
         sort_by=sort_by,
         sort_dir=sort_dir
     )
+
 
 @app.route("/projects", methods=["GET"])
 @login_required
@@ -209,6 +210,37 @@ def projects():
         sort_by=sort_by,
         sort_dir=sort_dir
     )
+
+
+@app.route("/managers")
+@login_required
+def managers():
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    query = """
+        SELECT
+            d.dname,
+            d.dnumber,
+            COALESCE(e.fname || ' ' || e.lname, 'None') AS manager_name,
+            COUNT(DISTINCT emp.ssn) AS employee_count,
+            COALESCE(SUM(w.hours), 0) AS total_hours
+        FROM department d
+        LEFT JOIN employee e ON d.mgr_ssn = e.ssn
+        LEFT JOIN employee emp ON emp.dno = d.dnumber
+        LEFT JOIN works_on w ON w.essn = emp.ssn
+        GROUP BY d.dname, d.dnumber, manager_name
+        ORDER BY d.dnumber;
+    """
+
+    cur.execute(query)
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template("managers.html", managers=rows)
 
 
 @app.route("/employee/add", methods=["GET", "POST"])
@@ -336,6 +368,7 @@ def delete_employee(ssn):
         flash("Error deleting employee: " + str(e), "danger")
 
     return redirect(url_for("employees"))
+
 
 @app.route("/logout")
 def logout():
