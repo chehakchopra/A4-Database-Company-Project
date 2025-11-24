@@ -31,7 +31,8 @@ th {
   text-align: left;
 }
 
-td, th {
+td,
+th {
   padding: 8px;
   border: 1px solid #ddd;
 }
@@ -40,26 +41,37 @@ form {
   background: #ffffff;
   padding: 10px;
   border-radius: 8px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 }
 
-form input, form select, form button, form a {
+form input,
+form select,
+form button,
+form a {
   margin: 5px;
   padding: 5px;
 }
 
-.flash.success { color: green; }
-.flash.danger { color: red; }
-.flash.info { color: blue; }
+.flash.success {
+  color: green;
+}
 
-..login-page {
+.flash.danger {
+  color: red;
+}
+
+.flash.info {
+  color: blue;
+}
+
+.login-page {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;       
+  min-height: 100vh;
   background: #f5f6fa;
   font-family: Arial, sans-serif;
-  margin: 0;              
+  margin: 0;
   padding: 0;
 }
 
@@ -69,7 +81,7 @@ form input, form select, form button, form a {
   background: white;
   padding: 30px 25px;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .login-box h2 {
@@ -85,23 +97,24 @@ form input, form select, form button, form a {
 
 .form-group label {
   display: block;
+  margin-top: 12px;
   margin-bottom: 5px;
   font-size: 14px;
   color: #333;
 }
 
 .form-group input {
-  width: 100%;
+  width: 95%;
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
-  box-sizing: border-box; 
+  box-sizing: border-box;
 }
 
 
 .btn-login {
-  width: 100%;
+  width: 95%;
   background-color: #007bff;
   color: white;
   padding: 8px;
@@ -124,6 +137,62 @@ form input, form select, form button, form a {
   border-radius: 4px;
 }
 
-.flash.success { background: #e7f7e7; color: #2d7a2d; border: 1px solid #a0dba0; }
-.flash.danger  { background: #fbeaea; color: #b52b2b; border: 1px solid #f0b3b3; }
-.flash.info    { background: #e7f1fb; color: #2760b0; border: 1px solid #a8c7f0; }
+.flash.success {
+  background: #e7f7e7;
+  color: #2d7a2d;
+  border: 1px solid #a0dba0;
+}
+
+.flash.danger {
+  background: #fbeaea;
+  color: #b52b2b;
+  border: 1px solid #f0b3b3;
+}
+
+.flash.info {
+  background: #e7f1fb;
+  color: #2760b0;
+  border: 1px solid #a8c7f0;
+}
+
+/* Add/Edit CSS */
+.container {
+  max-width: 500px;
+  margin: auto;
+  margin-top: 40px;
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #ccc;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 15px;
+  width: 97%;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}
+
+input,
+select {
+  padding: 8px;
+  margin-top: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+input {
+  width: 95%;
+}
+
+select {
+  width: 97%;
+}
+
+.remove_background {
+  background: none;
+  box-shadow: none;
+}

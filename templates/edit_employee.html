@@ -1,54 +1,52 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Edit Employee</title>
-    <style>
-        body { font-family: Arial; background: #f5f5f5; }
-        .container {
-            width: 500px; margin: auto; margin-top: 40px;
-            background: white; padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px #ccc;
-        }
-        label { display: block; margin-top: 12px; font-weight: bold; }
-        input, select { width: 100%; padding: 8px; margin-top: 6px;
-            border: 1px solid #ddd; border-radius: 4px; }
-        button { margin-top: 20px; padding: 10px 15px; width: 100%;
-            background: #28a745; color: white; border: none; border-radius: 4px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
-<div class="container">
-    <h2>Edit Employee ({{ emp[3] }})</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
 
-    <form method="POST">
-        <label>Address</label>
-        <input name="address" value="{{ emp[4] }}" required>
+    <div class="container">
+        <h2>Edit Employee ({{ emp[3] }}, {{ emp[0] }} {{ emp[1] }} {{ emp[2] }})</h2>
 
-        <label>Salary</label>
-        <input name="salary" type="number" value="{{ emp[6] }}" required>
+        <form method="POST" class="remove_background">
+            <label>Address</label>
+            <input name="address" value="{{ emp[4] }}" required>
 
-        <label>Supervisor</label>
-        <select name="super_ssn">
-            <option value="">None</option>
-            {% for s in supervisors %}
-                <option value="{{ s[0] }}">{{ s[1] }}</option>
-            {% endfor %}
-        </select>
+            <label>Salary</label>
+            <input name="salary" type="number" value="{{ emp[6] }}" required>
 
-        <label>Department</label>
-        <select name="dno">
-            {% for d in departments %}
-                <option value="{{ d[0] }}" {% if emp[8] == d[0] %}selected{% endif %}>
+            <label>Supervisor</label>
+            <select name="super_ssn">
+                <option value="">None</option>
+                {% for s in supervisors %}
+                <option value="{{ s[0] }}" {% if s[0]==emp[7] %}selected{% endif %}>{{ s[1] }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Department</label>
+            <select name="dno">
+                {% for d in departments %}
+                <option value="{{ d[0] }}" {% if emp[8]==d[0] %}selected{% endif %}>
                     {{ d[1] }}
                 </option>
-            {% endfor %}
-        </select>
+                {% endfor %}
+            </select>
 
-        <button type="submit">Save Changes</button>
-    </form>
-</div>
+            <button type="submit">Save Changes</button>
+        </form>
+    </div>
 
 </body>
+
 </html>

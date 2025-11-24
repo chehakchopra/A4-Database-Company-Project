@@ -1,77 +1,74 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Add Employee</title>
-    <style>
-        body { font-family: Arial; background: #f5f5f5; }
-        .container {
-            width: 500px; margin: auto; margin-top: 40px;
-            background: white; padding: 25px; border-radius: 8px;
-            box-shadow: 0 0 10px #ccc;
-        }
-        label { display: block; margin-top: 12px; font-weight: bold; }
-        input, select {
-            width: 100%; padding: 8px; margin-top: 6px;
-            border: 1px solid #ddd; border-radius: 4px;
-        }
-        button { margin-top: 20px; padding: 10px 15px; width: 100%;
-            background: #007bff; color: white; border: none; border-radius: 4px; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
 
-<div class="container">
-    <h2>Add Employee</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
 
-    <form method="POST">
-        <label>First Name</label>
-        <input name="fname" required>
+    <div class="container">
+        <h2>Add Employee</h2>
 
-        <label>Middle Initial</label>
-        <input name="minit" maxlength="1" required>
+        <form method="POST" class="remove_background">
+            <label>First Name</label>
+            <input name="fname" required>
 
-        <label>Last Name</label>
-        <input name="lname" required>
+            <label>Middle Initial</label>
+            <input name="minit" maxlength="1" required>
 
-        <label>SSN</label>
-        <input name="ssn" required maxlength="9">
+            <label>Last Name</label>
+            <input name="lname" required>
 
-        <label>Address</label>
-        <input name="address" required>
+            <label>SSN</label>
+            <input name="ssn" required maxlength="9">
 
-        <label>Sex</label>
-        <select name="sex">
-            <option>M</option>
-            <option>F</option>
-        </select>
+            <label>Address</label>
+            <input name="address" required>
 
-        <label>Salary</label>
-        <input name="salary" type="number" required>
+            <label>Sex</label>
+            <select name="sex">
+                <option>M</option>
+                <option>F</option>
+            </select>
 
-        <label>Supervisor</label>
-        <select name="super_ssn">
-            <option value="">None</option>
-            {% for s in supervisors %}
+            <label>Salary</label>
+            <input name="salary" type="number" required>
+
+            <label>Supervisor</label>
+            <select name="super_ssn">
+                <option value="">None</option>
+                {% for s in supervisors %}
                 <option value="{{ s[0] }}">{{ s[1] }}</option>
-            {% endfor %}
-        </select>
+                {% endfor %}
+            </select>
 
-        <label>Department</label>
-        <select name="dno" required>
-            {% for d in departments %}
+            <label>Department</label>
+            <select name="dno" required>
+                {% for d in departments %}
                 <option value="{{ d[0] }}">{{ d[1] }}</option>
-            {% endfor %}
-        </select>
+                {% endfor %}
+            </select>
 
-        <label>Birth Date</label>
-        <input type="date" name="bdate" required>
+            <label>Birth Date</label>
+            <input type="date" name="bdate" required>
 
-        <label>Employment Date</label>
-        <input type="date" name="empdate" required>
+            <label>Employment Date</label>
+            <input type="date" name="empdate" required>
 
-        <button type="submit">Add Employee</button>
-    </form>
-</div>
+            <button type="submit">Add Employee</button>
+        </form>
+    </div>
 
 </body>
+
 </html>

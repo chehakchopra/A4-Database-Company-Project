@@ -17,6 +17,7 @@ def get_db_connection():
     )
     return conn
 
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -88,6 +89,7 @@ def employees():
             e.fname || ' ' || e.lname AS full_name,
             d.dname AS department,
             COUNT(DISTINCT dep.dependent_name) AS total_dependents,
+            COUNT(DISTINCT p.pname) AS num_projects,
             STRING_AGG(DISTINCT p.pname, ', ') AS projects,
             COALESCE(SUM(w.hours), 0) AS total_hours
         FROM employee e
@@ -115,15 +117,15 @@ def employees():
         GROUP BY e.ssn, e.fname, e.lname, d.dname
     """
 
-    if sort_by:
-        query += " ORDER BY "
-        if sort_by == "hours":
-            query += "total_hours "
-        else:
-            query += "full_name "
-        query += "DESC " if sort_dir == "desc" else "ASC "
-    else:
-        query += " ORDER BY full_name ASC "
+    # Sorting (by default, no sorting)
+    # ensure the valid sorting options are selected
+    if ((sort_by == "hours" or sort_by == "name") and
+            (sort_dir == "asc" or sort_dir == "desc")):
+        sort_condition = " ORDER BY "
+        sort_condition += "total_hours" if sort_by == "hours" else "e.fname"
+        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        query += sort_condition
+    query += ";"
 
     cur.execute(query, params)
     employees = cur.fetchall()
@@ -185,12 +187,15 @@ def projects():
 
     query += " GROUP BY p.pnumber, p.pname, d.dname "
 
-    if sort_by == "hours":
-        query += " ORDER BY total_hours "
-    else:
-        query += " ORDER BY total_employees "
-
-    query += "DESC " if sort_dir == "desc" else "ASC "
+    # Sorting (by default, no sorting)
+    # ensure the valid sorting options are selected
+    if ((sort_by == "hours" or sort_by == "headcount") and
+            (sort_dir == "asc" or sort_dir == "desc")):
+        sort_condition = " ORDER BY "
+        sort_condition += "total_hours" if sort_by == "hours" else "total_employees"
+        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        query += sort_condition
+    query += ";"
 
     cur.execute(query, params)
     projects = cur.fetchall()
@@ -285,7 +290,8 @@ def add_employee():
     cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
     departments = cur.fetchall()
 
-    cur.execute("SELECT ssn, fname || ' ' || lname FROM employee ORDER BY fname;")
+    cur.execute(
+        "SELECT ssn, fname || ' ' || lname FROM employee ORDER BY fname;")
     supervisors = cur.fetchall()
 
     if request.method == "POST":
@@ -312,6 +318,11 @@ def add_employee():
             flash("Employee added successfully!", "success")
             return redirect(url_for("employees"))
 
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
+            flash(
+                "Error: An employee with the provided SSN already exists",
+                "danger")
         except Exception as e:
             conn.rollback()
             flash(f"Error adding employee: {e}", "danger")
@@ -340,7 +351,9 @@ def edit_employee(ssn):
     cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
     departments = cur.fetchall()
 
-    cur.execute("SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;", (ssn,))
+    cur.execute(
+        "SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;",
+        (ssn,))
     supervisors = cur.fetchall()
 
     if request.method == "POST":
@@ -379,23 +392,34 @@ def delete_employee(ssn):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT 1 FROM dependent WHERE essn = %s LIMIT 1;", (ssn,))
-    dep = cur.fetchone()
-
-    cur.execute("SELECT 1 FROM works_on WHERE essn = %s LIMIT 1;", (ssn,))
-    work = cur.fetchone()
-
     cur.execute("SELECT 1 FROM department WHERE mgr_ssn = %s LIMIT 1;", (ssn,))
-    mgr = cur.fetchone()
+    dept_mgr = cur.fetchone()
 
-    if dep or work or mgr:
-        flash("Cannot delete employee due to dependencies.", "danger")
+    if dept_mgr:
+        flash("Cannot delete employee: They are a department manager.",
+              "danger")
+        return redirect(url_for("employees"))
+
+    cur.execute("SELECT 1 FROM employee WHERE super_ssn = %s LIMIT 1;",
+                (ssn,))
+    emp_mgr = cur.fetchone()
+
+    if emp_mgr:
+        flash("Cannot delete employee: They are a supervisor.", "danger")
         return redirect(url_for("employees"))
 
     try:
         cur.execute("DELETE FROM employee WHERE ssn = %s;", (ssn,))
         conn.commit()
         flash("Employee deleted.", "info")
+    except psycopg2.DatabaseError as e:
+        conn.rollback()
+        detail = e.pgerror
+        if "works_on" in e.pgerror:
+            detail = "Employee is assigned to a project"
+        if "dependent" in e.pgerror:
+            detail = "Employee has dependents"
+        flash(f"Could not delete employee: {detail}.", "danger")
     except Exception as e:
         conn.rollback()
         flash("Error deleting employee: " + str(e), "danger")
