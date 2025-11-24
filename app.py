@@ -211,6 +211,39 @@ def projects():
         sort_dir=sort_dir
     )
 
+@app.route("/projects/<pid>", methods=["GET", "POST"])
+@login_required
+def project(pid):
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # TODO: ADD ERROR CHECKING
+    if request.method == "POST":
+        try:
+            emp_id = request.form["emp_id"]
+            hours = request.form["hours"]
+            cur.execute("INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;",(emp_id,pid,hours))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
+
+    
+    # Query to retrieve all employees on this project with Full Name and Hours
+    cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = " + pid)
+    projects = cur.fetchall()
+    
+    cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
+    employees = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return render_template(
+        "project.html", pid=pid, projects=projects, employees=employees
+    )
+    
+    
 
 @app.route("/managers")
 @login_required
