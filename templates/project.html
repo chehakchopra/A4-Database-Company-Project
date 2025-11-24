@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Project {{pid}}</h1>
+
+<h2>Add Hours:</h2>
+
+<form  style="display:flex; flex-wrap:wrap; gap:20px;" method="POST">
+    <p>Employee:</p>
+    <select name="emp_id">
+        <option value="">None</option>
+        {% for e in employees %}
+            <option value="{{ e[0] }}">{{ e[1] }} {{ e[2] }} {{ e[3] }}</option>
+        {% endfor %}
+    </select>
+
+    <p>Hours:</p>
+    <input name="hours" type="number" required>
+
+    <button type="submit">Submit</button>
+</form>
+
+<h2> Project {{pid}} Employees </h2>
+
+<table>
+  <tr>
+    <th>Employee Name</th>
+    <th>Hours</th>
+  </tr>
+  {% for p in projects %}
+  <tr>
+    <td>{{ p[0] }} {{ p[1] }} {{ p[2] }}</td>
+    <td>{{ p[3] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

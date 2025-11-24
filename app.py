@@ -7,7 +7,6 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
 
-# DB Connection
 def get_db_connection():
     conn = psycopg2.connect(
         host="localhost",
@@ -216,6 +215,70 @@ def projects():
         sort_by=sort_by,
         sort_dir=sort_dir
     )
+
+@app.route("/projects/<pid>", methods=["GET", "POST"])
+@login_required
+def project(pid):
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # TODO: ADD ERROR CHECKING
+    if request.method == "POST":
+        try:
+            emp_id = request.form["emp_id"]
+            hours = request.form["hours"]
+            cur.execute("INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;",(emp_id,pid,hours))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
+
+    
+    # Query to retrieve all employees on this project with Full Name and Hours
+    cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = " + pid)
+    projects = cur.fetchall()
+    
+    cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
+    employees = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return render_template(
+        "project.html", pid=pid, projects=projects, employees=employees
+    )
+    
+    
+
+@app.route("/managers")
+@login_required
+def managers():
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    query = """
+        SELECT
+            d.dname,
+            d.dnumber,
+            COALESCE(e.fname || ' ' || e.lname, 'None') AS manager_name,
+            COUNT(DISTINCT emp.ssn) AS employee_count,
+            COALESCE(SUM(w.hours), 0) AS total_hours
+        FROM department d
+        LEFT JOIN employee e ON d.mgr_ssn = e.ssn
+        LEFT JOIN employee emp ON emp.dno = d.dnumber
+        LEFT JOIN works_on w ON w.essn = emp.ssn
+        GROUP BY d.dname, d.dnumber, manager_name
+        ORDER BY d.dnumber;
+    """
+
+    cur.execute(query)
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template("managers.html", managers=rows)
 
 
 @app.route("/employee/add", methods=["GET", "POST"])
