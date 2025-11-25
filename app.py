@@ -223,7 +223,6 @@ def project(pid):
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # TODO: ADD ERROR CHECKING
     if request.method == "POST":
         try:
             emp_id = request.form["emp_id"]
@@ -236,16 +235,21 @@ def project(pid):
 
     
     # Query to retrieve all employees on this project with Full Name and Hours
-    cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = " + pid)
-    projects = cur.fetchall()
+    cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = %s", (pid,))
+    emps_on_project = cur.fetchall()
     
     cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
     employees = cur.fetchall()
+    
+    cur.execute("SELECT Pname FROM Project WHERE Pnumber = %s", (pid,))
+    proj_name = cur.fetchone()
+    
+    print(proj_name)
 
     cur.close()
     conn.close()
     return render_template(
-        "project.html", pid=pid, projects=projects, employees=employees
+        "project.html", proj_name=proj_name, emps_on_project=emps_on_project, employees=employees
     )
     
     
