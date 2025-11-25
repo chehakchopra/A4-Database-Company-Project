@@ -47,7 +47,7 @@ def login():
             session["user_id"] = user[0]
             session["username"] = username
             flash("Login successful!", "success")
-            return redirect(url_for("home"))
+            return redirect(url_for("employees"))
         else:
             flash("Invalid username or password", "danger")
 
