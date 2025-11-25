@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, Response, render_template, request, redirect, url_for, session, flash
 import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
@@ -91,17 +91,9 @@ def home():
     )
 
 
-@app.route("/employees", methods=["GET"])
-@login_required
-def employees():
-
+def employee_query(search_name, selected_dept, sort_by, sort_dir):
     conn = get_db_connection()
     cur = conn.cursor()
-
-    search_name = request.args.get("search_name", "").strip()
-    selected_dept = request.args.get("department", "")
-    sort_by = request.args.get("sort_by", "")
-    sort_dir = request.args.get("sort_dir", "asc")
 
     query = """
         SELECT
@@ -143,13 +135,63 @@ def employees():
     # ensure the valid sorting options are selected
     if sort_by and sort_dir:
         sort_condition = " ORDER BY "
-        sort_condition += "total_hours" if whitelist(sort_by) == "hours" else "e.fname"
+        sort_condition += "total_hours" if whitelist(
+            sort_by) == "hours" else "e.fname"
         sort_condition += " DESC" if whitelist(sort_dir) == "desc" else " ASC"
         query += sort_condition
     query += ";"
 
     cur.execute(query, params)
     employees = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return employees
+
+
+@app.route("/employees/csv", methods=["GET"])
+@login_required
+def employees_csv():
+    # get employees w/ curr params
+    search_name = request.args.get("search_name", "").strip()
+    selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "asc")
+
+    employees = employee_query(search_name, selected_dept, sort_by, sort_dir)
+
+    # Source - https://stackoverflow.com/questions/30024948/flask-download-a-csv-file-on-clicking-a-button
+    # Posted by Robᵩ
+    # Retrieved 2025-11-25, License - CC BY-SA 3.0
+    # Used as reference
+
+    emp_csv = ''
+
+    for emp in employees:
+        str_emp = [str(value) for value in emp]
+        row = ','.join(str_emp)
+        emp_csv += row + "\n"
+
+    return Response(
+        emp_csv,
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=download.csv"}
+    )
+
+
+@app.route("/employees", methods=["GET"])
+@login_required
+def employees():
+    search_name = request.args.get("search_name", "").strip()
+    selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "asc")
+
+    employees = employee_query(search_name, selected_dept, sort_by, sort_dir)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     cur.execute("SELECT DISTINCT dname FROM department ORDER BY dname;")
     departments = [row[0] for row in cur.fetchall()]
@@ -212,7 +254,8 @@ def projects():
     # ensure the valid sorting options are selected
     if sort_by and sort_dir:
         sort_condition = " ORDER BY "
-        sort_condition += "total_hours" if whitelist(sort_by) == "hours" else "total_employees"
+        sort_condition += "total_hours" if whitelist(
+            sort_by) == "hours" else "total_employees"
         sort_condition += " DESC" if whitelist(sort_dir) == "desc" else " ASC"
         query += sort_condition
     query += ";"
@@ -243,7 +286,7 @@ def project(pid):
 
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     if request.method == "POST":
         try:
             emp_id = request.form["emp_id"]
@@ -259,13 +302,13 @@ def project(pid):
     # Query to retrieve all employees on this project with Full Name and Hours
     cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = %s", (pid,))
     emps_on_project = cur.fetchall()
-    
+
     cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
     employees = cur.fetchall()
-    
+
     cur.execute("SELECT Pname FROM Project WHERE Pnumber = %s", (pid,))
     proj_name = cur.fetchone()
-    
+
     print(proj_name)
 
     cur.close()

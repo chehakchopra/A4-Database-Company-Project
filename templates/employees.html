@@ -54,6 +54,12 @@
   </form>
 </div>
 
+<div>
+  <a
+    href="{{ url_for('employees_csv', search_name=search_name, department=selected_dept, sort_by=sort_by, sort_dir=sort_dir) }}">Download
+    Current View</a>
+</div>
+
 <table>
 
   <thead>
