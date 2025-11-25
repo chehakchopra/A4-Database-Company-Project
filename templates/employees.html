@@ -1,11 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<h2>Employee Overview</h2>
+<h1>Employees Overview</h1>
 
 <p><a href="{{ url_for('add_employee') }}" style="font-weight:bold;">+ Add Employee</a></p>
 
-<div style="border:1px solid #ddd; padding:15px; border-radius:6px; background:#fafafa; margin-bottom:20px;">
+<div>
 
   <form method="get" action="{{ url_for('employees') }}">
 
@@ -49,15 +49,14 @@
 
     </div>
 
-    <p style="margin-top:10px;">
-      <a href="{{ url_for('employees') }}">Reset Filters</a>
-    </p>
+    <a href="{{ url_for('employees') }}">Reset Filters</a>
 
   </form>
 </div>
 
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; font-size:14px;">
-  <thead style="background:#0074D9; color:white; text-align:left;">
+<table>
+
+  <thead>
     <tr>
       <th>SSN</th>
       <th>Name</th>
@@ -89,6 +88,7 @@
     </tr>
     {% endfor %}
   </tbody>
+
 </table>
 
 <p style="margin-top:15px;">

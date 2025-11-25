@@ -1,10 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<h2>Managers Overview</h2>
+<h1>Managers Overview</h1>
 
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; font-size:14px;">
-  <thead style="background:#2ECC40; color:white;">
+<table>
+
+  <thead>
     <tr>
       <th>Department Name</th>
       <th>Department Number</th>
@@ -25,6 +26,7 @@
     </tr>
     {% endfor %}
   </tbody>
+  
 </table>
 
 <p style="margin-top:15px;">

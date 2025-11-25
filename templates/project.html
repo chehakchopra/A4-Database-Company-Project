@@ -4,34 +4,55 @@
 
 <h2>Add Hours:</h2>
 
-<form  style="display:flex; flex-wrap:wrap; gap:20px;" method="POST">
-    <p>Employee:</p>
-    <select name="emp_id">
-        <option value="">None</option>
-        {% for e in employees %}
-            <option value="{{ e[0] }}">{{ e[1] }} {{ e[2] }} {{ e[3] }}</option>
-        {% endfor %}
-    </select>
+<form method="POST">
 
-    <p>Hours:</p>
-    <input name="hours" type="number" required>
+  <div style="display: flex; gap: 20px; align-items: end;">
 
-    <button type="submit">Submit</button>
+    <div>
+      <label>Employee:
+        <select name="emp_id">
+            <option value="">None</option>
+            {% for e in employees %}
+                <option value="{{ e[0] }}">{{ e[1] }} {{ e[2] }} {{ e[3] }}</option>
+            {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div>
+      <label>Hours:
+        <input name="hours" type="number" required>
+      </label>
+    </div> 
+
+    <div>
+      <button type="submit">Submit</button>
+    </div>
+
+  </div>
+
 </form>
 
 <h2> Project {{pid}} Employees </h2>
 
 <table>
-  <tr>
-    <th>Employee Name</th>
-    <th>Hours</th>
-  </tr>
-  {% for p in projects %}
-  <tr>
-    <td>{{ p[0] }} {{ p[1] }} {{ p[2] }}</td>
-    <td>{{ p[3] }}</td>
-  </tr>
-  {% endfor %}
+  
+  <thead>
+    <tr>
+      <th>Employee Name</th>
+      <th>Hours</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for p in projects %}
+    <tr>
+      <td>{{ p[0] }} {{ p[1] }} {{ p[2] }}</td>
+      <td>{{ p[3] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+
 </table>
 
 {% endblock %}
