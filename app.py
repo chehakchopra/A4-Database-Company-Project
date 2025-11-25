@@ -86,7 +86,7 @@ def employees():
     query = """
         SELECT
             e.ssn,
-            e.fname || ' ' || e.lname AS full_name,
+            e.fname || ' ' || e.minit || '. ' || e.lname AS full_name,
             d.dname AS department,
             COUNT(DISTINCT dep.dependent_name) AS total_dependents,
             COUNT(DISTINCT p.pname) AS num_projects,
@@ -261,7 +261,7 @@ def managers():
         SELECT
             d.dname,
             d.dnumber,
-            COALESCE(e.fname || ' ' || e.lname, 'None') AS manager_name,
+            COALESCE(e.fname || ' ' || e.minit || '. ' || e.lname, 'None') AS manager_name,
             COUNT(DISTINCT emp.ssn) AS employee_count,
             COALESCE(SUM(w.hours), 0) AS total_hours
         FROM department d
