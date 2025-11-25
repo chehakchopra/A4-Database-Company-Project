@@ -373,7 +373,7 @@ def edit_employee(ssn):
     departments = cur.fetchall()
 
     cur.execute(
-        "SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;",
+        "SELECT ssn, fname || ' ' || minit || '. ' || lname FROM employee WHERE ssn <> %s;",
         (ssn,))
     supervisors = cur.fetchall()
 
