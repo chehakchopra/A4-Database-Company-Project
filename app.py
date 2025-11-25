@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
+import re
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -25,6 +26,25 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def whitelist(input):
+    # Source - https://stackoverflow.com/questions/56159087/how-can-i-whitelist-characters-from-a-string-in-python-3
+    # Posted by Ajax1234
+    # Retrieved 2025-11-25, License - CC BY-SA 4.0
+    # Used as reference
+    return re.sub('[^a-zA-Z0-9_ ]', '', input)
+
+
+def is_valid(input):
+    # Source - https://stackoverflow.com/questions/5698267/efficient-way-to-search-for-invalid-characters-in-python
+    # Posted by ridgerunner, modified by community. See post 'Timeline' for change history
+    # Retrieved 2025-11-25, License - CC BY-SA 3.0
+    # Used as reference
+    if re.search('[^a-zA-Z0-9_ ]', input):
+        return False
+    else:
+        return True
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -104,11 +124,13 @@ def employees():
 
     if search_name:
         conditions.append("(LOWER(e.fname) LIKE %s OR LOWER(e.lname) LIKE %s)")
-        params.extend([f"%{search_name.lower()}%", f"%{search_name.lower()}%"])
+        wl_search_name = whitelist(search_name)
+        params.extend([f"%{wl_search_name.lower()}%",
+                       f"%{wl_search_name.lower()}%"])
 
     if selected_dept:
         conditions.append("d.dname = %s")
-        params.append(selected_dept)
+        params.append(whitelist(selected_dept))
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -119,11 +141,10 @@ def employees():
 
     # Sorting (by default, no sorting)
     # ensure the valid sorting options are selected
-    if ((sort_by == "hours" or sort_by == "name") and
-            (sort_dir == "asc" or sort_dir == "desc")):
+    if sort_by and sort_dir:
         sort_condition = " ORDER BY "
-        sort_condition += "total_hours" if sort_by == "hours" else "e.fname"
-        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        sort_condition += "total_hours" if whitelist(sort_by) == "hours" else "e.fname"
+        sort_condition += " DESC" if whitelist(sort_dir) == "desc" else " ASC"
         query += sort_condition
     query += ";"
 
@@ -189,11 +210,10 @@ def projects():
 
     # Sorting (by default, no sorting)
     # ensure the valid sorting options are selected
-    if ((sort_by == "hours" or sort_by == "headcount") and
-            (sort_dir == "asc" or sort_dir == "desc")):
+    if sort_by and sort_dir:
         sort_condition = " ORDER BY "
-        sort_condition += "total_hours" if sort_by == "hours" else "total_employees"
-        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        sort_condition += "total_hours" if whitelist(sort_by) == "hours" else "total_employees"
+        sort_condition += " DESC" if whitelist(sort_dir) == "desc" else " ASC"
         query += sort_condition
     query += ";"
 
@@ -216,29 +236,31 @@ def projects():
         sort_dir=sort_dir
     )
 
+
 @app.route("/projects/<pid>", methods=["GET", "POST"])
 @login_required
 def project(pid):
-    
+
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     # TODO: ADD ERROR CHECKING
     if request.method == "POST":
         try:
             emp_id = request.form["emp_id"]
             hours = request.form["hours"]
-            cur.execute("INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;",(emp_id,pid,hours))
+            cur.execute(
+                "INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;", (emp_id, pid, hours))
             conn.commit()
         except Exception as e:
             conn.rollback()
-            flash(f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
+            flash(
+                f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
 
-    
     # Query to retrieve all employees on this project with Full Name and Hours
     cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = " + pid)
     projects = cur.fetchall()
-    
+
     cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
     employees = cur.fetchall()
 
@@ -247,8 +269,7 @@ def project(pid):
     return render_template(
         "project.html", pid=pid, projects=projects, employees=employees
     )
-    
-    
+
 
 @app.route("/managers")
 @login_required
