@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1>Project {{pid}}</h1>
+<h1>Project: {{proj_name[0]}}</h1>
 
 <h2>Add Hours:</h2>
 
@@ -13,7 +13,7 @@
         <select name="emp_id">
             <option value="">None</option>
             {% for e in employees %}
-                <option value="{{ e[0] }}">{{ e[1] }} {{ e[2] }} {{ e[3] }}</option>
+                <option value="{{ e[0] }}">{{ e[1] }} {{ e[2] }}. {{ e[3] }}</option>
             {% endfor %}
         </select>
       </label>
@@ -33,10 +33,10 @@
 
 </form>
 
-<h2> Project {{pid}} Employees </h2>
+<h2> {{proj_name[0]}} Employees </h2>
 
 <table>
-  
+
   <thead>
     <tr>
       <th>Employee Name</th>
@@ -45,10 +45,10 @@
   </thead>
 
   <tbody>
-    {% for p in projects %}
+    {% for emp in emps_on_project %}
     <tr>
-      <td>{{ p[0] }} {{ p[1] }} {{ p[2] }}</td>
-      <td>{{ p[3] }}</td>
+      <td>{{ emp[0] }} {{ emp[1] }}. {{ emp[2] }}</td>
+      <td>{{ emp[3] }}</td>
     </tr>
     {% endfor %}
   </tbody>
