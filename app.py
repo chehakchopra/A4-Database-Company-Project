@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, Response, render_template, request, redirect, url_for, session, flash
 import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
+import re
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -25,6 +26,25 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def whitelist(input):
+    # Source - https://stackoverflow.com/questions/56159087/how-can-i-whitelist-characters-from-a-string-in-python-3
+    # Posted by Ajax1234
+    # Retrieved 2025-11-25, License - CC BY-SA 4.0
+    # Used as reference
+    return re.sub('[^a-zA-Z0-9_ ]', '', input)
+
+
+def is_valid(input):
+    # Source - https://stackoverflow.com/questions/5698267/efficient-way-to-search-for-invalid-characters-in-python
+    # Posted by ridgerunner, modified by community. See post 'Timeline' for change history
+    # Retrieved 2025-11-25, License - CC BY-SA 3.0
+    # Used as reference
+    if re.search('[^a-zA-Z0-9_ ]', input):
+        return False
+    else:
+        return True
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -71,22 +91,14 @@ def home():
     )
 
 
-@app.route("/employees", methods=["GET"])
-@login_required
-def employees():
-
+def employee_query(search_name, selected_dept, sort_by, sort_dir):
     conn = get_db_connection()
     cur = conn.cursor()
-
-    search_name = request.args.get("search_name", "").strip()
-    selected_dept = request.args.get("department", "")
-    sort_by = request.args.get("sort_by", "")
-    sort_dir = request.args.get("sort_dir", "asc")
 
     query = """
         SELECT
             e.ssn,
-            e.fname || ' ' || e.lname AS full_name,
+            e.fname || ' ' || e.minit || '. ' || e.lname AS full_name,
             d.dname AS department,
             COUNT(DISTINCT dep.dependent_name) AS total_dependents,
             COUNT(DISTINCT p.pname) AS num_projects,
@@ -104,11 +116,13 @@ def employees():
 
     if search_name:
         conditions.append("(LOWER(e.fname) LIKE %s OR LOWER(e.lname) LIKE %s)")
-        params.extend([f"%{search_name.lower()}%", f"%{search_name.lower()}%"])
+        wl_search_name = whitelist(search_name)
+        params.extend([f"%{wl_search_name.lower()}%",
+                       f"%{wl_search_name.lower()}%"])
 
     if selected_dept:
         conditions.append("d.dname = %s")
-        params.append(selected_dept)
+        params.append(whitelist(selected_dept))
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -119,16 +133,65 @@ def employees():
 
     # Sorting (by default, no sorting)
     # ensure the valid sorting options are selected
-    if ((sort_by == "hours" or sort_by == "name") and
-            (sort_dir == "asc" or sort_dir == "desc")):
+    if sort_by and sort_dir:
         sort_condition = " ORDER BY "
-        sort_condition += "total_hours" if sort_by == "hours" else "e.fname"
-        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        sort_condition += "total_hours" if whitelist(
+            sort_by) == "hours" else "e.fname"
+        sort_condition += " DESC" if whitelist(sort_dir) == "desc" else " ASC"
         query += sort_condition
     query += ";"
 
     cur.execute(query, params)
     employees = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return employees
+
+
+@app.route("/employees/csv", methods=["GET"])
+@login_required
+def employees_csv():
+    # get employees w/ curr params
+    search_name = request.args.get("search_name", "").strip()
+    selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "asc")
+
+    employees = employee_query(search_name, selected_dept, sort_by, sort_dir)
+
+    # Source - https://stackoverflow.com/questions/30024948/flask-download-a-csv-file-on-clicking-a-button
+    # Posted by Robᵩ
+    # Retrieved 2025-11-25, License - CC BY-SA 3.0
+    # Used as reference
+
+    emp_csv = ''
+
+    for emp in employees:
+        str_emp = [str(value) for value in emp]
+        row = ','.join(str_emp)
+        emp_csv += row + "\n"
+
+    return Response(
+        emp_csv,
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=download.csv"}
+    )
+
+
+@app.route("/employees", methods=["GET"])
+@login_required
+def employees():
+    search_name = request.args.get("search_name", "").strip()
+    selected_dept = request.args.get("department", "")
+    sort_by = request.args.get("sort_by", "")
+    sort_dir = request.args.get("sort_dir", "asc")
+
+    employees = employee_query(search_name, selected_dept, sort_by, sort_dir)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     cur.execute("SELECT DISTINCT dname FROM department ORDER BY dname;")
     departments = [row[0] for row in cur.fetchall()]
@@ -189,11 +252,11 @@ def projects():
 
     # Sorting (by default, no sorting)
     # ensure the valid sorting options are selected
-    if ((sort_by == "hours" or sort_by == "headcount") and
-            (sort_dir == "asc" or sort_dir == "desc")):
+    if sort_by and sort_dir:
         sort_condition = " ORDER BY "
-        sort_condition += "total_hours" if sort_by == "hours" else "total_employees"
-        sort_condition += " DESC" if sort_dir == "desc" else " ASC"
+        sort_condition += "total_hours" if whitelist(
+            sort_by) == "hours" else "total_employees"
+        sort_condition += " DESC" if whitelist(sort_dir) == "desc" else " ASC"
         query += sort_condition
     query += ";"
 
@@ -216,34 +279,36 @@ def projects():
         sort_dir=sort_dir
     )
 
+
 @app.route("/projects/<pid>", methods=["GET", "POST"])
 @login_required
 def project(pid):
-    
+
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     if request.method == "POST":
         try:
             emp_id = request.form["emp_id"]
             hours = request.form["hours"]
-            cur.execute("INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;",(emp_id,pid,hours))
+            cur.execute(
+                "INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;", (emp_id, pid, hours))
             conn.commit()
         except Exception as e:
             conn.rollback()
-            flash(f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
+            flash(
+                f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
 
-    
     # Query to retrieve all employees on this project with Full Name and Hours
     cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = %s", (pid,))
     emps_on_project = cur.fetchall()
-    
+
     cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
     employees = cur.fetchall()
-    
+
     cur.execute("SELECT Pname FROM Project WHERE Pnumber = %s", (pid,))
     proj_name = cur.fetchone()
-    
+
     print(proj_name)
 
     cur.close()
@@ -251,8 +316,7 @@ def project(pid):
     return render_template(
         "project.html", proj_name=proj_name, emps_on_project=emps_on_project, employees=employees
     )
-    
-    
+
 
 @app.route("/managers")
 @login_required
@@ -265,7 +329,7 @@ def managers():
         SELECT
             d.dname,
             d.dnumber,
-            COALESCE(e.fname || ' ' || e.lname, 'None') AS manager_name,
+            COALESCE(e.fname || ' ' || e.minit || '. ' || e.lname, 'None') AS manager_name,
             COUNT(DISTINCT emp.ssn) AS employee_count,
             COALESCE(SUM(w.hours), 0) AS total_hours
         FROM department d
@@ -356,7 +420,7 @@ def edit_employee(ssn):
     departments = cur.fetchall()
 
     cur.execute(
-        "SELECT ssn, fname || ' ' || lname FROM employee WHERE ssn <> %s;",
+        "SELECT ssn, fname || ' ' || minit || '. ' || lname FROM employee WHERE ssn <> %s;",
         (ssn,))
     supervisors = cur.fetchall()
 
