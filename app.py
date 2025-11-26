@@ -654,207 +654,207 @@ def delete_employee(ssn):
     return redirect(url_for("employees"))
 
 
-@app.route("/import", methods=["GET", "POST"])
-@admin_required
-def import_data():
-    if request.method == "POST":
+# @app.route("/import", methods=["GET", "POST"])
+# @admin_required
+# def import_data():
+#     if request.method == "POST":
 
-        if 'file' not in request.files:
-            flash("No file selected", "danger")
-            return redirect(url_for("import_data"))
+#         if 'file' not in request.files:
+#             flash("No file selected", "danger")
+#             return redirect(url_for("import_data"))
 
-        file = request.files['file']
-        table_name = request.form.get('table', '').strip().lower()
+#         file = request.files['file']
+#         table_name = request.form.get('table', '').strip().lower()
 
-        if file.filename == '':
-            flash("No file selected", "danger")
-            return redirect(url_for("import_data"))
+#         if file.filename == '':
+#             flash("No file selected", "danger")
+#             return redirect(url_for("import_data"))
 
-        if not allowed_file(file.filename):
-            flash("Invalid file format. Only .xlsx files are allowed", "danger")
-            return redirect(url_for("import_data"))
+#         if not allowed_file(file.filename):
+#             flash("Invalid file format. Only .xlsx files are allowed", "danger")
+#             return redirect(url_for("import_data"))
 
-        if table_name not in ['employee', 'project', 'department', 'dependent', 'works_on']:
-            flash("Invalid table selected", "danger")
-            return redirect(url_for("import_data"))
+#         if table_name not in ['employee', 'project', 'department', 'dependent', 'works_on']:
+#             flash("Invalid table selected", "danger")
+#             return redirect(url_for("import_data"))
 
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(file_path)
+#         filename = secure_filename(file.filename)
+#         file_path = os.path.join(UPLOAD_FOLDER, filename)
+#         file.save(file_path)
 
-        try:
+#         try:
 
-            rows, parse_error = parse_excel_file(file_path, table_name)
-            if parse_error:
-                flash(parse_error, "danger")
-                return redirect(url_for("import_data"))
+#             rows, parse_error = parse_excel_file(file_path, table_name)
+#             if parse_error:
+#                 flash(parse_error, "danger")
+#                 return redirect(url_for("import_data"))
 
-            if not rows:
-                flash("No data found in Excel file", "warning")
-                return redirect(url_for("import_data"))
+#             if not rows:
+#                 flash("No data found in Excel file", "warning")
+#                 return redirect(url_for("import_data"))
 
-            conn = get_db_connection()
-            cur = conn.cursor()
+#             conn = get_db_connection()
+#             cur = conn.cursor()
 
-            successful_rows = 0
-            failed_rows = []
+#             successful_rows = 0
+#             failed_rows = []
 
-            for row_num, row_data in rows:
-                try:
-                    if table_name == 'employee':
-                        is_valid, error_msg = validate_employee_row(
-                            row_data, row_num)
-                        if not is_valid:
-                            failed_rows.append(error_msg)
-                            continue
+#             for row_num, row_data in rows:
+#                 try:
+#                     if table_name == 'employee':
+#                         is_valid, error_msg = validate_employee_row(
+#                             row_data, row_num)
+#                         if not is_valid:
+#                             failed_rows.append(error_msg)
+#                             continue
 
-                        cur.execute(
-                            "SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
-                        if cur.fetchone():
-                            failed_rows.append(
-                                f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
-                            continue
+#                         cur.execute(
+#                             "SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
+#                         if cur.fetchone():
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
+#                             continue
 
-                        cur.execute(
-                            """
-                            INSERT INTO employee
-                            (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            """,
-                            (
-                                row_data.get('fname'),
-                                row_data.get('minit', ''),
-                                row_data.get('lname'),
-                                str(row_data.get('ssn')).strip(),
-                                row_data.get('address'),
-                                str(row_data.get('sex', '')).upper(),
-                                int(row_data.get('salary', 0)),
-                                None,
-                                int(row_data.get('dno', 0)),
-                                row_data.get('bdate'),
-                                row_data.get('empdate')
-                            )
-                        )
+#                         cur.execute(
+#                             """
+#                             INSERT INTO employee
+#                             (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate)
+#                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+#                             """,
+#                             (
+#                                 row_data.get('fname'),
+#                                 row_data.get('minit', ''),
+#                                 row_data.get('lname'),
+#                                 str(row_data.get('ssn')).strip(),
+#                                 row_data.get('address'),
+#                                 str(row_data.get('sex', '')).upper(),
+#                                 int(row_data.get('salary', 0)),
+#                                 None,
+#                                 int(row_data.get('dno', 0)),
+#                                 row_data.get('bdate'),
+#                                 row_data.get('empdate')
+#                             )
+#                         )
 
-                        successful_rows += 1
+#                         successful_rows += 1
 
-                    elif table_name == 'project':
-                        if not all(row_data.get(field) for field in ['pname', 'pnumber', 'plocation', 'dnum']):
-                            failed_rows.append(
-                                f"Row {row_num}: Missing required fields")
-                            continue
+#                     elif table_name == 'project':
+#                         if not all(row_data.get(field) for field in ['pname', 'pnumber', 'plocation', 'dnum']):
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Missing required fields")
+#                             continue
 
-                        cur.execute(
-                            "SELECT 1 FROM project WHERE pnumber = %s", (int(row_data['pnumber']),))
-                        if cur.fetchone():
-                            failed_rows.append(
-                                f"Row {row_num}: Project with number {row_data['pnumber']} already exists")
-                            continue
+#                         cur.execute(
+#                             "SELECT 1 FROM project WHERE pnumber = %s", (int(row_data['pnumber']),))
+#                         if cur.fetchone():
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Project with number {row_data['pnumber']} already exists")
+#                             continue
 
-                        cur.execute("""
-                            INSERT INTO project (pname, pnumber, plocation, dnum)
-                            VALUES (%s, %s, %s, %s)
-                        """, (
-                            row_data.get('pname'),
-                            int(row_data.get('pnumber')),
-                            row_data.get('plocation'),
-                            int(row_data.get('dnum'))
-                        ))
-                        successful_rows += 1
+#                         cur.execute("""
+#                             INSERT INTO project (pname, pnumber, plocation, dnum)
+#                             VALUES (%s, %s, %s, %s)
+#                         """, (
+#                             row_data.get('pname'),
+#                             int(row_data.get('pnumber')),
+#                             row_data.get('plocation'),
+#                             int(row_data.get('dnum'))
+#                         ))
+#                         successful_rows += 1
 
-                    elif table_name == 'department':
+#                     elif table_name == 'department':
 
-                        if not all(row_data.get(field) for field in ['dname', 'dnumber']):
-                            failed_rows.append(
-                                f"Row {row_num}: Missing required fields (dname, dnumber)")
-                            continue
+#                         if not all(row_data.get(field) for field in ['dname', 'dnumber']):
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Missing required fields (dname, dnumber)")
+#                             continue
 
-                        cur.execute(
-                            "SELECT 1 FROM department WHERE dnumber = %s", (int(row_data['dnumber']),))
-                        if cur.fetchone():
-                            failed_rows.append(
-                                f"Row {row_num}: Department with number {row_data['dnumber']} already exists")
-                            continue
+#                         cur.execute(
+#                             "SELECT 1 FROM department WHERE dnumber = %s", (int(row_data['dnumber']),))
+#                         if cur.fetchone():
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Department with number {row_data['dnumber']} already exists")
+#                             continue
 
-                        cur.execute("""
-                            INSERT INTO department (dname, dnumber, mgr_ssn)
-                            VALUES (%s, %s, %s)
-                        """, (
-                            row_data.get('dname'),
-                            int(row_data.get('dnumber')),
-                            row_data.get('mgr_ssn')
-                        ))
-                        successful_rows += 1
+#                         cur.execute("""
+#                             INSERT INTO department (dname, dnumber, mgr_ssn)
+#                             VALUES (%s, %s, %s)
+#                         """, (
+#                             row_data.get('dname'),
+#                             int(row_data.get('dnumber')),
+#                             row_data.get('mgr_ssn')
+#                         ))
+#                         successful_rows += 1
 
-                    elif table_name == 'dependent':
-                        if not all(row_data.get(field) for field in ['essn', 'dependent_name', 'sex', 'bdate', 'relationship']):
-                            failed_rows.append(
-                                f"Row {row_num}: Missing required fields")
-                            continue
+#                     elif table_name == 'dependent':
+#                         if not all(row_data.get(field) for field in ['essn', 'dependent_name', 'sex', 'bdate', 'relationship']):
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Missing required fields")
+#                             continue
 
-                        cur.execute("""
-                            INSERT INTO dependent (essn, dependent_name, sex, bdate, relationship)
-                            VALUES (%s, %s, %s, %s, %s)
-                        """, (
-                            row_data.get('essn'),
-                            row_data.get('dependent_name'),
-                            str(row_data.get('sex', '')).upper(),
-                            row_data.get('bdate'),
-                            row_data.get('relationship')
-                        ))
-                        successful_rows += 1
+#                         cur.execute("""
+#                             INSERT INTO dependent (essn, dependent_name, sex, bdate, relationship)
+#                             VALUES (%s, %s, %s, %s, %s)
+#                         """, (
+#                             row_data.get('essn'),
+#                             row_data.get('dependent_name'),
+#                             str(row_data.get('sex', '')).upper(),
+#                             row_data.get('bdate'),
+#                             row_data.get('relationship')
+#                         ))
+#                         successful_rows += 1
 
-                    elif table_name == 'works_on':
-                        if not all(row_data.get(field) for field in ['essn', 'pno', 'hours']):
-                            failed_rows.append(
-                                f"Row {row_num}: Missing required fields (essn, pno, hours)")
-                            continue
+#                     elif table_name == 'works_on':
+#                         if not all(row_data.get(field) for field in ['essn', 'pno', 'hours']):
+#                             failed_rows.append(
+#                                 f"Row {row_num}: Missing required fields (essn, pno, hours)")
+#                             continue
 
-                        cur.execute("""
-                            INSERT INTO works_on (essn, pno, hours)
-                            VALUES (%s, %s, %s)
-                            ON CONFLICT (essn, pno) DO UPDATE SET hours = works_on.hours + EXCLUDED.hours
-                        """, (
-                            row_data.get('essn'),
-                            int(row_data.get('pno')),
-                            float(row_data.get('hours', 0))
-                        ))
-                        successful_rows += 1
+#                         cur.execute("""
+#                             INSERT INTO works_on (essn, pno, hours)
+#                             VALUES (%s, %s, %s)
+#                             ON CONFLICT (essn, pno) DO UPDATE SET hours = works_on.hours + EXCLUDED.hours
+#                         """, (
+#                             row_data.get('essn'),
+#                             int(row_data.get('pno')),
+#                             float(row_data.get('hours', 0))
+#                         ))
+#                         successful_rows += 1
 
-                except psycopg2.errors.ForeignKeyViolation as e:
-                    conn.rollback()
-                    failed_rows.append(
-                        f"Row {row_num}: Foreign key constraint violated - {str(e)}")
-                except psycopg2.errors.UniqueViolation as e:
-                    conn.rollback()
-                    failed_rows.append(
-                        f"Row {row_num}: Duplicate entry - record already exists")
-                except Exception as e:
-                    conn.rollback()
-                    failed_rows.append(f"Row {row_num}: {str(e)}")
+#                 except psycopg2.errors.ForeignKeyViolation as e:
+#                     conn.rollback()
+#                     failed_rows.append(
+#                         f"Row {row_num}: Foreign key constraint violated - {str(e)}")
+#                 except psycopg2.errors.UniqueViolation as e:
+#                     conn.rollback()
+#                     failed_rows.append(
+#                         f"Row {row_num}: Duplicate entry - record already exists")
+#                 except Exception as e:
+#                     conn.rollback()
+#                     failed_rows.append(f"Row {row_num}: {str(e)}")
 
-            conn.commit()
-            cur.close()
-            conn.close()
+#             conn.commit()
+#             cur.close()
+#             conn.close()
 
-            if successful_rows > 0:
-                flash(
-                    f"Successfully imported {successful_rows} rows into {table_name} table", "success")
+#             if successful_rows > 0:
+#                 flash(
+#                     f"Successfully imported {successful_rows} rows into {table_name} table", "success")
 
-            if failed_rows:
-                flash(f"Failed to import {len(failed_rows)} rows. Errors: " + " | ".join(failed_rows[:5]) +
-                      (f" and {len(failed_rows) - 5} more..." if len(failed_rows) > 5 else ""), "warning")
+#             if failed_rows:
+#                 flash(f"Failed to import {len(failed_rows)} rows. Errors: " + " | ".join(failed_rows[:5]) +
+#                       (f" and {len(failed_rows) - 5} more..." if len(failed_rows) > 5 else ""), "warning")
 
-            return redirect(url_for("import_data"))
+#             return redirect(url_for("import_data"))
 
-        except Exception as e:
-            flash(f"Error processing Excel file: {str(e)}", "danger")
-            return redirect(url_for("import_data"))
-        finally:
-            if os.path.exists(file_path):
-                os.remove(file_path)
+#         except Exception as e:
+#             flash(f"Error processing Excel file: {str(e)}", "danger")
+#             return redirect(url_for("import_data"))
+#         finally:
+#             if os.path.exists(file_path):
+#                 os.remove(file_path)
 
-    return render_template("import_data.html")
+#     return render_template("import_data.html")
 
 
 @app.route("/logout")
