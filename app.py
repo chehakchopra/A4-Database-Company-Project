@@ -12,6 +12,8 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def get_db_connection():
@@ -654,7 +656,7 @@ def import_data():
             return redirect(url_for("import_data"))
 
         filename = secure_filename(file.filename)
-        file_path = os.path.join('/tmp', filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(file_path)
 
         try:
@@ -683,30 +685,32 @@ def import_data():
                             failed_rows.append(error_msg)
                             continue
 
-                        cur.execute(
-                            "SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
+                        cur.execute("SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
                         if cur.fetchone():
-                            failed_rows.append(
-                                f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
+                            failed_rows.append(f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
                             continue
 
-                        cur.execute("""
+                        cur.execute(
+                            """
                             INSERT INTO employee
                             (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (
-                            row_data.get('fname'),
-                            row_data.get('minit', ''),
-                            row_data.get('lname'),
-                            row_data.get('ssn'),
-                            row_data.get('address'),
-                            str(row_data.get('sex', '')).upper(),
-                            int(row_data.get('salary', 0)),
-                            row_data.get('super_ssn'),
-                            int(row_data.get('dno', 0)),
-                            row_data.get('bdate'),
-                            row_data.get('empdate')
-                        ))
+                            """,
+                            (
+                                row_data.get('fname'),
+                                row_data.get('minit', ''),
+                                row_data.get('lname'),
+                                str(row_data.get('ssn')).strip(),
+                                row_data.get('address'),
+                                str(row_data.get('sex','')).upper(),
+                                int(row_data.get('salary', 0)),
+                                None,
+                                int(row_data.get('dno', 0)),
+                                row_data.get('bdate'),
+                                row_data.get('empdate')
+                            )
+                        )
+
                         successful_rows += 1
 
                     elif table_name == 'project':
