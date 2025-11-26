@@ -55,7 +55,8 @@ Assignment 4 Project Github Repo
 
 ## About Indexes
 
-* An index for any of the following may be useful, as they're repeated:
-  * get employee (due to csv & view)
-    * manager
-  * get department (bc filters on mutiple pages)
+* `CREATE INDEX idx_employee_ssn ON Employee (Ssn);`
+  * SSN is most common search/join condition on the employee table
+* `CREATE INDEX idx_workson_pno ON Works_On (Pno);`
+  * Pno is one of the more commonly used join condition values
+* Both indexes should improve the performance of retrieving data from their respective tables

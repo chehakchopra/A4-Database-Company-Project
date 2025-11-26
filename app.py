@@ -9,11 +9,11 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 import getpass
 
+# MAIN
+
 dbuser = "postgres"
 dbpwd = ""
 dbport = "5432"
-
-# MAIN
 
 # Ask user for dabase input
 print("""Please input the following information.
@@ -708,9 +708,11 @@ def import_data():
                             failed_rows.append(error_msg)
                             continue
 
-                        cur.execute("SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
+                        cur.execute(
+                            "SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
                         if cur.fetchone():
-                            failed_rows.append(f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
+                            failed_rows.append(
+                                f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
                             continue
 
                         cur.execute(
@@ -725,7 +727,7 @@ def import_data():
                                 row_data.get('lname'),
                                 str(row_data.get('ssn')).strip(),
                                 row_data.get('address'),
-                                str(row_data.get('sex','')).upper(),
+                                str(row_data.get('sex', '')).upper(),
                                 int(row_data.get('salary', 0)),
                                 None,
                                 int(row_data.get('dno', 0)),
