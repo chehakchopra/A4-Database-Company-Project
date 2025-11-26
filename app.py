@@ -72,30 +72,31 @@ def allowed_file(filename):
 def validate_employee_row(row_data, row_num):
     """Validate a single employee row from Excel. Returns (is_valid, error_message)"""
     errors = []
-    
+
     # Required fields
-    required_fields = ['fname', 'minit', 'lname', 'ssn', 'address', 'sex', 'salary', 'dno', 'bdate', 'empdate']
+    required_fields = ['fname', 'minit', 'lname', 'ssn',
+                       'address', 'sex', 'salary', 'dno', 'bdate', 'empdate']
     for field in required_fields:
         if field not in row_data or not row_data[field]:
             errors.append(f"Missing required field: {field}")
-    
+
     if errors:
         return False, f"Row {row_num}: " + ", ".join(errors)
-    
+
     # Validate SSN format (9 digits)
     if not re.match(r'^\d{9}$', str(row_data.get('ssn', '')).strip()):
         errors.append("SSN must be 9 digits")
-    
+
     # Validate sex field
     if str(row_data.get('sex', '')).strip().upper() not in ['M', 'F']:
         errors.append("Sex must be 'M' or 'F'")
-    
+
     # Validate salary is numeric
     try:
         int(row_data.get('salary', 0))
     except (ValueError, TypeError):
         errors.append("Salary must be a valid integer")
-    
+
     # Validate dates
     for date_field in ['bdate', 'empdate']:
         date_val = row_data.get(date_field)
@@ -105,10 +106,10 @@ def validate_employee_row(row_data, row_num):
                     datetime.strptime(date_val, '%Y-%m-%d')
             except ValueError:
                 errors.append(f"{date_field} must be in YYYY-MM-DD format")
-    
+
     if errors:
         return False, f"Row {row_num}: " + ", ".join(errors)
-    
+
     return True, ""
 
 
@@ -117,19 +118,19 @@ def parse_excel_file(file_path, table_name):
     try:
         workbook = load_workbook(file_path)
         worksheet = workbook.active
-        
+
         if not worksheet:
             return None, "No active worksheet found in Excel file"
-        
+
         # Get headers from first row
         headers = []
         for cell in worksheet[1]:
             if cell.value:
                 headers.append(str(cell.value).strip().lower())
-        
+
         if not headers:
             return None, "No headers found in Excel file"
-        
+
         # Parse data rows
         rows = []
         for row_idx, row in enumerate(worksheet.iter_rows(min_row=2, values_only=True), start=2):
@@ -142,10 +143,10 @@ def parse_excel_file(file_path, table_name):
                         row_data[header] = value.strftime('%Y-%m-%d')
                     else:
                         row_data[header] = value
-            
+
             if any(row_data.values()):  # Skip empty rows
                 rows.append((row_idx, row_data))
-        
+
         return rows, None
     except Exception as e:
         return None, f"Error reading Excel file: {str(e)}"
@@ -263,17 +264,20 @@ def employees_csv():
 
     employees = employee_query(search_name, selected_dept, sort_by, sort_dir)
 
-    emp_csv = ''
+    filename = whitelist(selected_dept).lower() + \
+        "_employees" if selected_dept else "employees"
+    emp_csv = "SSN,Name,Department,Dependents,Number of Projects,Projects,Total Hours\n"
 
     for emp in employees:
         str_emp = [str(value) for value in emp]
+        str_emp[5] = str_emp[5].replace(',', '; ')
         row = ','.join(str_emp)
         emp_csv += row + "\n"
 
     return Response(
         emp_csv,
         mimetype="text/csv",
-        headers={"Content-disposition": "attachment; filename=employees.csv"}
+        headers={"Content-disposition": f"attachment; filename={filename}.csv"}
     )
 
 
@@ -633,54 +637,57 @@ def import_data():
         if 'file' not in request.files:
             flash("No file selected", "danger")
             return redirect(url_for("import_data"))
-        
+
         file = request.files['file']
         table_name = request.form.get('table', '').strip().lower()
-        
+
         if file.filename == '':
             flash("No file selected", "danger")
             return redirect(url_for("import_data"))
-        
+
         if not allowed_file(file.filename):
             flash("Invalid file format. Only .xlsx files are allowed", "danger")
             return redirect(url_for("import_data"))
-        
+
         if table_name not in ['employee', 'project', 'department', 'dependent', 'works_on']:
             flash("Invalid table selected", "danger")
             return redirect(url_for("import_data"))
-        
+
         filename = secure_filename(file.filename)
         file_path = os.path.join('/tmp', filename)
         file.save(file_path)
-        
+
         try:
 
             rows, parse_error = parse_excel_file(file_path, table_name)
             if parse_error:
                 flash(parse_error, "danger")
                 return redirect(url_for("import_data"))
-            
+
             if not rows:
                 flash("No data found in Excel file", "warning")
                 return redirect(url_for("import_data"))
 
             conn = get_db_connection()
             cur = conn.cursor()
-            
+
             successful_rows = 0
             failed_rows = []
-            
+
             for row_num, row_data in rows:
                 try:
                     if table_name == 'employee':
-                        is_valid, error_msg = validate_employee_row(row_data, row_num)
+                        is_valid, error_msg = validate_employee_row(
+                            row_data, row_num)
                         if not is_valid:
                             failed_rows.append(error_msg)
                             continue
 
-                        cur.execute("SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
+                        cur.execute(
+                            "SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
                         if cur.fetchone():
-                            failed_rows.append(f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
+                            failed_rows.append(
+                                f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
                             continue
 
                         cur.execute("""
@@ -701,17 +708,20 @@ def import_data():
                             row_data.get('empdate')
                         ))
                         successful_rows += 1
-                    
+
                     elif table_name == 'project':
                         if not all(row_data.get(field) for field in ['pname', 'pnumber', 'plocation', 'dnum']):
-                            failed_rows.append(f"Row {row_num}: Missing required fields")
+                            failed_rows.append(
+                                f"Row {row_num}: Missing required fields")
                             continue
 
-                        cur.execute("SELECT 1 FROM project WHERE pnumber = %s", (int(row_data['pnumber']),))
+                        cur.execute(
+                            "SELECT 1 FROM project WHERE pnumber = %s", (int(row_data['pnumber']),))
                         if cur.fetchone():
-                            failed_rows.append(f"Row {row_num}: Project with number {row_data['pnumber']} already exists")
+                            failed_rows.append(
+                                f"Row {row_num}: Project with number {row_data['pnumber']} already exists")
                             continue
-                        
+
                         cur.execute("""
                             INSERT INTO project (pname, pnumber, plocation, dnum)
                             VALUES (%s, %s, %s, %s)
@@ -722,18 +732,21 @@ def import_data():
                             int(row_data.get('dnum'))
                         ))
                         successful_rows += 1
-                    
+
                     elif table_name == 'department':
 
                         if not all(row_data.get(field) for field in ['dname', 'dnumber']):
-                            failed_rows.append(f"Row {row_num}: Missing required fields (dname, dnumber)")
+                            failed_rows.append(
+                                f"Row {row_num}: Missing required fields (dname, dnumber)")
                             continue
 
-                        cur.execute("SELECT 1 FROM department WHERE dnumber = %s", (int(row_data['dnumber']),))
+                        cur.execute(
+                            "SELECT 1 FROM department WHERE dnumber = %s", (int(row_data['dnumber']),))
                         if cur.fetchone():
-                            failed_rows.append(f"Row {row_num}: Department with number {row_data['dnumber']} already exists")
+                            failed_rows.append(
+                                f"Row {row_num}: Department with number {row_data['dnumber']} already exists")
                             continue
-                        
+
                         cur.execute("""
                             INSERT INTO department (dname, dnumber, mgr_ssn)
                             VALUES (%s, %s, %s)
@@ -743,12 +756,13 @@ def import_data():
                             row_data.get('mgr_ssn')
                         ))
                         successful_rows += 1
-                    
+
                     elif table_name == 'dependent':
                         if not all(row_data.get(field) for field in ['essn', 'dependent_name', 'sex', 'bdate', 'relationship']):
-                            failed_rows.append(f"Row {row_num}: Missing required fields")
+                            failed_rows.append(
+                                f"Row {row_num}: Missing required fields")
                             continue
-                        
+
                         cur.execute("""
                             INSERT INTO dependent (essn, dependent_name, sex, bdate, relationship)
                             VALUES (%s, %s, %s, %s, %s)
@@ -760,12 +774,13 @@ def import_data():
                             row_data.get('relationship')
                         ))
                         successful_rows += 1
-                    
+
                     elif table_name == 'works_on':
                         if not all(row_data.get(field) for field in ['essn', 'pno', 'hours']):
-                            failed_rows.append(f"Row {row_num}: Missing required fields (essn, pno, hours)")
+                            failed_rows.append(
+                                f"Row {row_num}: Missing required fields (essn, pno, hours)")
                             continue
-                        
+
                         cur.execute("""
                             INSERT INTO works_on (essn, pno, hours)
                             VALUES (%s, %s, %s)
@@ -776,13 +791,15 @@ def import_data():
                             float(row_data.get('hours', 0))
                         ))
                         successful_rows += 1
-                
+
                 except psycopg2.errors.ForeignKeyViolation as e:
                     conn.rollback()
-                    failed_rows.append(f"Row {row_num}: Foreign key constraint violated - {str(e)}")
+                    failed_rows.append(
+                        f"Row {row_num}: Foreign key constraint violated - {str(e)}")
                 except psycopg2.errors.UniqueViolation as e:
                     conn.rollback()
-                    failed_rows.append(f"Row {row_num}: Duplicate entry - record already exists")
+                    failed_rows.append(
+                        f"Row {row_num}: Duplicate entry - record already exists")
                 except Exception as e:
                     conn.rollback()
                     failed_rows.append(f"Row {row_num}: {str(e)}")
@@ -792,21 +809,22 @@ def import_data():
             conn.close()
 
             if successful_rows > 0:
-                flash(f"Successfully imported {successful_rows} rows into {table_name} table", "success")
-            
+                flash(
+                    f"Successfully imported {successful_rows} rows into {table_name} table", "success")
+
             if failed_rows:
-                flash(f"Failed to import {len(failed_rows)} rows. Errors: " + " | ".join(failed_rows[:5]) + 
+                flash(f"Failed to import {len(failed_rows)} rows. Errors: " + " | ".join(failed_rows[:5]) +
                       (f" and {len(failed_rows) - 5} more..." if len(failed_rows) > 5 else ""), "warning")
-            
+
             return redirect(url_for("import_data"))
-        
+
         except Exception as e:
             flash(f"Error processing Excel file: {str(e)}", "danger")
             return redirect(url_for("import_data"))
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
-    
+
     return render_template("import_data.html")
 
 

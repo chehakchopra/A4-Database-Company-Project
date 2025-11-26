@@ -3,52 +3,57 @@
 <h2>Project Overview</h2>
 
 <form method="get" action="{{ url_for('projects') }}" style="margin-bottom: 20px;">
-  <label for="search_name">Search by Project Name:</label>
-  <input type="text" id="search_name" name="search_name"
-         value="{{ search_name }}" placeholder="Enter project name">
+  <div class="wrap">
+    <label for="search_name">Search by Project Name:
+      <input type="text" id="search_name" name="search_name" value="{{ search_name }}" placeholder="Enter project name">
+    </label>
 
-  <label for="department">Department:</label>
-  <select id="department" name="department">
-    <option value="">All Departments</option>
-    {% for dept in departments %}
-      <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>{{ dept }}</option>
-    {% endfor %}
-  </select>
+    <label for="department">Department:
+      <select id="department" name="department">
+        <option value="">All Departments</option>
+        {% for dept in departments %}
+        <option value="{{ dept }}" {% if dept==selected_dept %}selected{% endif %}>{{ dept }}</option>
+        {% endfor %}
+      </select>
+    </label>
 
-  <label for="sort_by">Sort:</label>
-  <select id="sort_by" name="sort_by">
-    <option value="">None</option>
-    <option value="headcount" {% if sort_by == "headcount" %}selected{% endif %}>Headcount</option>
-    <option value="hours" {% if sort_by == "hours" %}selected{% endif %}>Total Hours</option>
-  </select>
+    <label for="sort_by">Sort:
+      <select id="sort_by" name="sort_by">
+        <option value="">None</option>
+        <option value="headcount" {% if sort_by=="headcount" %}selected{% endif %}>Headcount</option>
+        <option value="hours" {% if sort_by=="hours" %}selected{% endif %}>Total Hours</option>
+      </select>
+    </label>
 
-  <label for="sort_dir">By:</label>
-  <select id="sort_dir" name="sort_dir">
-    <option value="asc" {% if sort_dir == "asc" %}selected{% endif %}>Ascending</option>
-    <option value="desc" {% if sort_dir == "desc" %}selected{% endif %}>Descending</option>
-  </select>
+    <label for="sort_dir">By:
+      <select id="sort_dir" name="sort_dir">
+        <option value="asc" {% if sort_dir=="asc" %}selected{% endif %}>Ascending</option>
+        <option value="desc" {% if sort_dir=="desc" %}selected{% endif %}>Descending</option>
+      </select>
+    </label>
 
-  <button type="submit">Filter</button>
-  <a href="{{ url_for('projects') }}">Reset</a>
+    <div style="margin-top: 17px;">
+      <button type="submit">Filter</button>
+    </div>
+  </div>
+  <p style="margin-top:10px;">
+    <a href="{{ url_for('projects') }}">Reset Filters</a>
+  </p>
 </form>
 
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
   <tr>
-    <th>Project Number</th>
     <th>Project Name</th>
     <th>Department</th>
-    <th>Total Employees</th>
+    <th>Headcount</th>
     <th>Total Hours</th>
-    <th>Details</th>
   </tr>
   {% for proj in projects %}
   <tr>
-    <td>{{ proj[0] }}</td>
-    <td>{{ proj[1] }}</td>
+    <td><a href="{{ url_for('project', pid=proj[0]) }}">{{ proj[1] }}</a></td>
     <td>{{ proj[2] }}</td>
     <td>{{ proj[3] }}</td>
     <td>{{ proj[4] }}</td>
-    <td><a href="{{ url_for('project', pid=proj[0]) }}">View</a></td>
   </tr>
   {% endfor %}
 </table>

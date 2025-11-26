@@ -1,31 +1,22 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>Project Details: {{ proj_name[0] }}</h2>
 
-<h3>Employees Assigned</h3>
-<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
-  <tr>
-    <th>Employee Name</th>
-    <th>Hours</th>
-  </tr>
-  {% for e in emps_on_project %}
-  <tr>
-    <td>{{ e[0] }} {{ e[1] }}. {{ e[2] }}</td>
-    <td>{{ e[3] }}</td>
-  </tr>
-  {% endfor %}
-</table>
+<p style="margin-top:20px;">
+  <a href="{{ url_for('projects') }}">Back to Projects</a>
+</p>
+
+<h2>Project Details: {{ proj_name[0] }}</h2>
 
 {% if session.get('role') == 'admin' %}
 <h3 style="margin-top:20px;">Assign / Update Hours</h3>
-<form method="post">
+<form method="post" style="max-width: 350px;">
   <label for="emp_id">Employee:</label>
   <select name="emp_id" id="emp_id" required>
     <option value="">-- Select Employee --</option>
     {% for emp in employees %}
-      <option value="{{ emp[0] }}">
-        {{ emp[1] }} {{ emp[2] }}. {{ emp[3] }} (SSN: {{ emp[0] }})
-      </option>
+    <option value="{{ emp[0] }}">
+      {{ emp[1] }} {{ emp[2] }}. {{ emp[3] }} (SSN: {{ emp[0] }})
+    </option>
     {% endfor %}
   </select>
 
@@ -40,7 +31,17 @@
 </p>
 {% endif %}
 
-<p style="margin-top:20px;">
-  <a href="{{ url_for('projects') }}">Back to Projects</a>
-</p>
+<h3>Employees Assigned</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
+  <tr>
+    <th>Employee Name</th>
+    <th>Hours</th>
+  </tr>
+  {% for e in emps_on_project %}
+  <tr>
+    <td>{{ e[0] }} {{ e[1] }}. {{ e[2] }}</td>
+    <td>{{ e[3] }}</td>
+  </tr>
+  {% endfor %}
+</table>
 {% endblock %}

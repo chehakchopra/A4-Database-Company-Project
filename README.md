@@ -6,7 +6,7 @@ Assignment 4 Project Github Repo
 
 1) Clone our repository: `git clone https://github.com/chehakchopra/A4-Database-Company-Project.git`
 
-2) Set up virtual environment then download required libraries (you must have python3 must be installed)
+2) Set up virtual environment then download required libraries (you must have python3 must be installed). If any of the modules fail to install, you can view `requirements.txt` and install them individually using `pip install <module name>`.
 
     __Mac:__
 
