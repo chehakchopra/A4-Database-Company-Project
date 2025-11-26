@@ -1,58 +1,46 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1>Project: {{proj_name[0]}}</h1>
+<h2>Project Details: {{ proj_name[0] }}</h2>
 
-<h2>Add Hours:</h2>
-
-<form method="POST">
-
-  <div style="display: flex; gap: 20px; align-items: end;">
-
-    <div>
-      <label>Employee:
-        <select name="emp_id">
-            <option value="">None</option>
-            {% for e in employees %}
-                <option value="{{ e[0] }}">{{ e[1] }} {{ e[2] }}. {{ e[3] }}</option>
-            {% endfor %}
-        </select>
-      </label>
-    </div>
-
-    <div>
-      <label>Hours:
-        <input name="hours" type="number" required>
-      </label>
-    </div> 
-
-    <div>
-      <button type="submit">Submit</button>
-    </div>
-
-  </div>
-
-</form>
-
-<h2> {{proj_name[0]}} Employees </h2>
-
-<table>
-
-  <thead>
-    <tr>
-      <th>Employee Name</th>
-      <th>Hours</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    {% for emp in emps_on_project %}
-    <tr>
-      <td>{{ emp[0] }} {{ emp[1] }}. {{ emp[2] }}</td>
-      <td>{{ emp[3] }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-
+<h3>Employees Assigned</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
+  <tr>
+    <th>Employee Name</th>
+    <th>Hours</th>
+  </tr>
+  {% for e in emps_on_project %}
+  <tr>
+    <td>{{ e[0] }} {{ e[1] }}. {{ e[2] }}</td>
+    <td>{{ e[3] }}</td>
+  </tr>
+  {% endfor %}
 </table>
 
+{% if session.get('role') == 'admin' %}
+<h3 style="margin-top:20px;">Assign / Update Hours</h3>
+<form method="post">
+  <label for="emp_id">Employee:</label>
+  <select name="emp_id" id="emp_id" required>
+    <option value="">-- Select Employee --</option>
+    {% for emp in employees %}
+      <option value="{{ emp[0] }}">
+        {{ emp[1] }} {{ emp[2] }}. {{ emp[3] }} (SSN: {{ emp[0] }})
+      </option>
+    {% endfor %}
+  </select>
+
+  <label for="hours" style="margin-left:10px;">Hours to Add:</label>
+  <input type="number" name="hours" id="hours" min="0" max="999" step="1" required>
+
+  <button type="submit" style="margin-left:10px;">Save</button>
+</form>
+{% else %}
+<p style="margin-top:15px; font-style:italic;">
+  You are viewing this project in read-only mode.
+</p>
+{% endif %}
+
+<p style="margin-top:20px;">
+  <a href="{{ url_for('projects') }}">Back to Projects</a>
+</p>
 {% endblock %}

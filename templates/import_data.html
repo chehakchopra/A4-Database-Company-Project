@@ -1,0 +1,154 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>Excel Data Import</h2>
+<p>Upload an Excel file (.xlsx) to import data into the database. Only admin users can import data.</p>
+
+<div class="import-container">
+  <h3>Import Form</h3>
+  <form method="POST" enctype="multipart/form-data" class="import-form">
+    <div class="form-group">
+      <label for="table">Select Table:</label>
+      <select name="table" id="table" required>
+        <option value="">-- Choose a table --</option>
+        <option value="employee">Employee</option>
+        <option value="project">Project</option>
+        <option value="department">Department</option>
+        <option value="dependent">Dependent</option>
+        <option value="works_on">Works_On</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="file">Choose Excel File:</label>
+      <input type="file" name="file" id="file" accept=".xlsx,.xls" required>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Import Data</button>
+      <a href="{{ url_for('employees') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+.import-container {
+  max-width: 800px;
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+}
+
+.table-info {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #e8f4f8;
+  border-left: 4px solid #2196F3;
+  border-radius: 3px;
+}
+
+.table-info h4 {
+  margin-top: 0;
+  color: #1976D2;
+}
+
+.table-info p {
+  margin: 5px 0;
+  font-size: 0.95em;
+}
+
+.import-form {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-group select,
+.form-group input[type="file"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1em;
+  box-sizing: border-box;
+}
+
+.form-actions {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  margin-right: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn-primary {
+  background-color: #2196F3;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0b7dda;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.quick-links {
+  margin-top: 30px;
+  padding: 15px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.quick-links h3 {
+  margin-top: 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.quick-links p {
+  margin: 10px 0 0 0;
+  font-size: 0.95em;
+}
+
+.quick-links a {
+  color: #2196F3;
+  text-decoration: none;
+  margin: 0 5px;
+}
+
+.quick-links a:hover {
+  text-decoration: underline;
+}
+</style>
+{% endblock %}

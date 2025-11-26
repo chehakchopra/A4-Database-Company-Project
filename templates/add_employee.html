@@ -1,74 +1,66 @@
-<!DOCTYPE html>
-<html>
+{% extends "layout.html" %}
+{% block content %}
+<h2>Add Employee</h2>
 
-<head>
-    <title>Add Employee</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
+<form method="post">
+  <div>
+    <label>First Name:</label><br>
+    <input type="text" name="fname" required>
+  </div>
+  <div>
+    <label>Middle Initial:</label><br>
+    <input type="text" name="minit" maxlength="1" required>
+  </div>
+  <div>
+    <label>Last Name:</label><br>
+    <input type="text" name="lname" required>
+  </div>
+  <div>
+    <label>SSN:</label><br>
+    <input type="text" name="ssn" maxlength="9" required>
+  </div>
+  <div>
+    <label>Address:</label><br>
+    <input type="text" name="address" required>
+  </div>
+  <div>
+    <label>Sex:</label><br>
+    <select name="sex" required>
+      <option value="M">M</option>
+      <option value="F">F</option>
+    </select>
+  </div>
+  <div>
+    <label>Salary:</label><br>
+    <input type="number" name="salary" required>
+  </div>
+  <div>
+    <label>Supervisor:</label><br>
+    <select name="super_ssn">
+      <option value="">None</option>
+      {% for sup in supervisors %}
+        <option value="{{ sup[0] }}">{{ sup[1] }} ({{ sup[0] }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Department:</label><br>
+    <select name="dno" required>
+      {% for dept in departments %}
+        <option value="{{ dept[0] }}">{{ dept[1] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>Birth Date:</label><br>
+    <input type="date" name="bdate" required>
+  </div>
+  <div>
+    <label>Employment Date:</label><br>
+    <input type="date" name="empdate" required>
+  </div>
 
-<body>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div class="flash {{ category }}">{{ message }}</div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <div class="container">
-        <h1>Add Employee</h1>
-
-        <form method="POST" class="remove_background">
-            <label>First Name</label>
-            <input name="fname" required>
-
-            <label>Middle Initial</label>
-            <input name="minit" maxlength="1" required>
-
-            <label>Last Name</label>
-            <input name="lname" required>
-
-            <label>SSN</label>
-            <input name="ssn" required maxlength="9">
-
-            <label>Address</label>
-            <input name="address" required>
-
-            <label>Sex</label>
-            <select name="sex">
-                <option>M</option>
-                <option>F</option>
-            </select>
-
-            <label>Salary</label>
-            <input name="salary" type="number" required>
-
-            <label>Supervisor</label>
-            <select name="super_ssn">
-                <option value="">None</option>
-                {% for s in supervisors %}
-                <option value="{{ s[0] }}">{{ s[1] }}</option>
-                {% endfor %}
-            </select>
-
-            <label>Department</label>
-            <select name="dno" required>
-                {% for d in departments %}
-                <option value="{{ d[0] }}">{{ d[1] }}</option>
-                {% endfor %}
-            </select>
-
-            <label>Birth Date</label>
-            <input type="date" name="bdate" required>
-
-            <label>Employment Date</label>
-            <input type="date" name="empdate" required>
-
-            <button type="submit">Add Employee</button>
-        </form>
-    </div>
-
-</body>
-
-</html>
+  <button type="submit" style="margin-top:10px;">Save</button>
+  <a href="{{ url_for('employees') }}" style="margin-left:10px;">Cancel</a>
+</form>
+{% endblock %}

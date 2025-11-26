@@ -1,20 +1,17 @@
 {% extends "layout.html" %}
 {% block content %}
+<h2>Managers Overview</h2>
 
-<h1>Managers Overview</h1>
-
-<table>
-
-  <thead>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
+  <thead style="background:#0074D9; color:white; text-align:left;">
     <tr>
       <th>Department Name</th>
       <th>Department Number</th>
-      <th>Manager</th>
+      <th>Manager Name</th>
       <th>Employee Count</th>
       <th>Total Hours</th>
     </tr>
   </thead>
-
   <tbody>
     {% for row in managers %}
     <tr>
@@ -26,11 +23,9 @@
     </tr>
     {% endfor %}
   </tbody>
-  
 </table>
 
 <p style="margin-top:15px;">
   <a href="{{ url_for('home') }}">Back to Home</a>
 </p>
-
 {% endblock %}

@@ -15,10 +15,20 @@
 {% endwith %}
 
 <nav>
+  {% if session.get('username') %}
+    <span>
+      Logged in as {{ session.get('username') }}
+      ({{ session.get('role') or 'viewer' }})
+    </span> |
+  {% endif %}
+  <a href="{{ url_for('home') }}">Home</a> |
   <a href="{{ url_for('employees') }}">Employees</a> |
   <a href="{{ url_for('projects') }}">Projects</a> |
-  <a href="{{ url_for('managers') }}">Managers</a> |
-  <a href="{{ url_for('logout') }}">Logout</a>
+  <a href="{{ url_for('managers') }}">Managers</a>
+  {% if session.get('role') == 'admin' %}
+    | <a href="{{ url_for('import_data') }}">Import Data</a>
+  {% endif %}
+  | <a href="{{ url_for('logout') }}">Logout</a>
 </nav>
 <hr>
 

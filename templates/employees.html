@@ -1,14 +1,16 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<h1>Employees Overview</h1>
+<h2>Employee Overview</h2>
 
+{% if session.get('role') == 'admin' %}
 <p><a href="{{ url_for('add_employee') }}" style="font-weight:bold;">+ Add Employee</a></p>
+{% endif %}
 
-<div>
+<div style="border:1px solid #ddd; padding:15px; border-radius:6px; background:#fafafa; margin-bottom:20px;">
 
   <form method="get" action="{{ url_for('employees') }}">
-
+    
     <div style="display:flex; flex-wrap:wrap; gap:20px;">
 
       <div>
@@ -21,7 +23,7 @@
         <select name="department">
           <option value="">All Departments</option>
           {% for dept in departments %}
-          <option value="{{ dept }}" {% if dept==selected_dept %}selected{% endif %}>{{ dept }}</option>
+            <option value="{{ dept }}" {% if dept == selected_dept %}selected{% endif %}>{{ dept }}</option>
           {% endfor %}
         </select>
       </div>
@@ -30,16 +32,16 @@
         <label>Sort By:</label><br>
         <select name="sort_by">
           <option value="">None</option>
-          <option value="name" {% if sort_by=="name" %}selected{% endif %}>Name</option>
-          <option value="hours" {% if sort_by=="hours" %}selected{% endif %}>Total Hours</option>
+          <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
+          <option value="hours" {% if sort_by == "hours" %}selected{% endif %}>Total Hours</option>
         </select>
       </div>
 
       <div>
         <label>Direction:</label><br>
         <select name="sort_dir">
-          <option value="asc" {% if sort_dir=="asc" %}selected{% endif %}>Ascending</option>
-          <option value="desc" {% if sort_dir=="desc" %}selected{% endif %}>Descending</option>
+          <option value="asc" {% if sort_dir == "asc" %}selected{% endif %}>Ascending</option>
+          <option value="desc" {% if sort_dir == "desc" %}selected{% endif %}>Descending</option>
         </select>
       </div>
 
@@ -49,29 +51,32 @@
 
     </div>
 
-    <a href="{{ url_for('employees') }}">Reset Filters</a>
+    <p style="margin-top:10px;">
+      <a href="{{ url_for('employees') }}">Reset Filters</a> |
+      <a href="{{ url_for('employees_csv',
+                          search_name=search_name,
+                          department=selected_dept,
+                          sort_by=sort_by,
+                          sort_dir=sort_dir) }}">
+        Download CSV
+      </a>
+    </p>
 
   </form>
 </div>
 
-<div>
-  <a
-    href="{{ url_for('employees_csv', search_name=search_name, department=selected_dept, sort_by=sort_by, sort_dir=sort_dir) }}">Download
-    Current View</a>
-</div>
-
-<table>
-
-  <thead>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; font-size:14px;">
+  <thead style="background:#0074D9; color:white; text-align:left;">
     <tr>
       <th>SSN</th>
       <th>Name</th>
       <th>Department</th>
       <th>Dependents</th>
-      <th>Number of Projects</th>
       <th>Projects</th>
       <th>Total Hours</th>
-      <th style="text-align:center;">Actions</th>
+      {% if session.get('role') == 'admin' %}
+        <th style="text-align:center;">Actions</th>
+      {% endif %}
     </tr>
   </thead>
 
@@ -82,19 +87,20 @@
       <td>{{ emp[1] }}</td>
       <td>{{ emp[2] }}</td>
       <td>{{ emp[3] }}</td>
-      <td>{{ emp[4] }}</td>
       <td>{{ emp[5] or 'None' }}</td>
       <td>{{ emp[6] }}</td>
+      {% if session.get('role') == 'admin' %}
       <td style="text-align:center;">
         <a href="{{ url_for('edit_employee', ssn=emp[0]) }}">Edit</a> |
-        <a href="{{ url_for('delete_employee', ssn=emp[0]) }}" onclick="return confirm('Delete this employee?');">
-          Delete
+        <a href="{{ url_for('delete_employee', ssn=emp[0]) }}"
+           onclick="return confirm('Delete this employee?');">
+           Delete
         </a>
       </td>
+      {% endif %}
     </tr>
     {% endfor %}
   </tbody>
-
 </table>
 
 <p style="margin-top:15px;">

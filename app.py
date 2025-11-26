@@ -3,9 +3,15 @@ import psycopg2
 from werkzeug.security import check_password_hash
 from functools import wraps
 import re
+import os
+from openpyxl import load_workbook
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
 
 
 def get_db_connection():
@@ -24,6 +30,18 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if "user_id" not in session:
             return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") != "admin":
+            flash("You do not have permission to perform this action.", "danger")
+            return redirect(url_for("employees"))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -47,6 +65,92 @@ def is_valid(input):
         return True
 
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def validate_employee_row(row_data, row_num):
+    """Validate a single employee row from Excel. Returns (is_valid, error_message)"""
+    errors = []
+    
+    # Required fields
+    required_fields = ['fname', 'minit', 'lname', 'ssn', 'address', 'sex', 'salary', 'dno', 'bdate', 'empdate']
+    for field in required_fields:
+        if field not in row_data or not row_data[field]:
+            errors.append(f"Missing required field: {field}")
+    
+    if errors:
+        return False, f"Row {row_num}: " + ", ".join(errors)
+    
+    # Validate SSN format (9 digits)
+    if not re.match(r'^\d{9}$', str(row_data.get('ssn', '')).strip()):
+        errors.append("SSN must be 9 digits")
+    
+    # Validate sex field
+    if str(row_data.get('sex', '')).strip().upper() not in ['M', 'F']:
+        errors.append("Sex must be 'M' or 'F'")
+    
+    # Validate salary is numeric
+    try:
+        int(row_data.get('salary', 0))
+    except (ValueError, TypeError):
+        errors.append("Salary must be a valid integer")
+    
+    # Validate dates
+    for date_field in ['bdate', 'empdate']:
+        date_val = row_data.get(date_field)
+        if date_val:
+            try:
+                if isinstance(date_val, str):
+                    datetime.strptime(date_val, '%Y-%m-%d')
+            except ValueError:
+                errors.append(f"{date_field} must be in YYYY-MM-DD format")
+    
+    if errors:
+        return False, f"Row {row_num}: " + ", ".join(errors)
+    
+    return True, ""
+
+
+def parse_excel_file(file_path, table_name):
+    """Parse Excel file and return list of dictionaries for each row"""
+    try:
+        workbook = load_workbook(file_path)
+        worksheet = workbook.active
+        
+        if not worksheet:
+            return None, "No active worksheet found in Excel file"
+        
+        # Get headers from first row
+        headers = []
+        for cell in worksheet[1]:
+            if cell.value:
+                headers.append(str(cell.value).strip().lower())
+        
+        if not headers:
+            return None, "No headers found in Excel file"
+        
+        # Parse data rows
+        rows = []
+        for row_idx, row in enumerate(worksheet.iter_rows(min_row=2, values_only=True), start=2):
+            row_data = {}
+            for col_idx, header in enumerate(headers):
+                if col_idx < len(row):
+                    value = row[col_idx]
+                    # Convert datetime objects to strings
+                    if isinstance(value, datetime):
+                        row_data[header] = value.strftime('%Y-%m-%d')
+                    else:
+                        row_data[header] = value
+            
+            if any(row_data.values()):  # Skip empty rows
+                rows.append((row_idx, row_data))
+        
+        return rows, None
+    except Exception as e:
+        return None, f"Error reading Excel file: {str(e)}"
+
+
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -56,7 +160,7 @@ def login():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, password_hash FROM app_user WHERE username = %s",
+            "SELECT id, password_hash, role FROM app_user WHERE username = %s",
             (username,)
         )
         user = cur.fetchone()
@@ -66,6 +170,7 @@ def login():
         if user and check_password_hash(user[1], password):
             session["user_id"] = user[0]
             session["username"] = username
+            session["role"] = user[2] if user[2] else "viewer"
             flash("Login successful!", "success")
             return redirect(url_for("employees"))
         else:
@@ -128,11 +233,9 @@ def employee_query(search_name, selected_dept, sort_by, sort_dir):
         query += " WHERE " + " AND ".join(conditions)
 
     query += """
-        GROUP BY e.ssn, e.fname, e.lname, d.dname
+        GROUP BY e.ssn, e.fname, e.minit, e.lname, d.dname
     """
 
-    # Sorting (by default, no sorting)
-    # ensure the valid sorting options are selected
     if sort_by and sort_dir:
         sort_condition = " ORDER BY "
         sort_condition += "total_hours" if whitelist(
@@ -153,18 +256,12 @@ def employee_query(search_name, selected_dept, sort_by, sort_dir):
 @app.route("/employees/csv", methods=["GET"])
 @login_required
 def employees_csv():
-    # get employees w/ curr params
     search_name = request.args.get("search_name", "").strip()
     selected_dept = request.args.get("department", "")
     sort_by = request.args.get("sort_by", "")
     sort_dir = request.args.get("sort_dir", "asc")
 
     employees = employee_query(search_name, selected_dept, sort_by, sort_dir)
-
-    # Source - https://stackoverflow.com/questions/30024948/flask-download-a-csv-file-on-clicking-a-button
-    # Posted by Robᵩ
-    # Retrieved 2025-11-25, License - CC BY-SA 3.0
-    # Used as reference
 
     emp_csv = ''
 
@@ -176,7 +273,7 @@ def employees_csv():
     return Response(
         emp_csv,
         mimetype="text/csv",
-        headers={"Content-disposition": "attachment; filename=download.csv"}
+        headers={"Content-disposition": "attachment; filename=employees.csv"}
     )
 
 
@@ -250,8 +347,6 @@ def projects():
 
     query += " GROUP BY p.pnumber, p.pname, d.dname "
 
-    # Sorting (by default, no sorting)
-    # ensure the valid sorting options are selected
     if sort_by and sort_dir:
         sort_condition = " ORDER BY "
         sort_condition += "total_hours" if whitelist(
@@ -288,19 +383,40 @@ def project(pid):
     cur = conn.cursor()
 
     if request.method == "POST":
+        if session.get("role") != "admin":
+            flash("You do not have permission to modify project assignments.",
+                  "danger")
+            return redirect(url_for("project", pid=pid))
         try:
             emp_id = request.form["emp_id"]
             hours = request.form["hours"]
             cur.execute(
-                "INSERT INTO Works_On VALUES (%s, %s, %s) ON CONFLICT (Essn, Pno) DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;", (emp_id, pid, hours))
+                """
+                INSERT INTO Works_On (Essn, Pno, Hours)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (Essn, Pno)
+                DO UPDATE SET Hours = Works_On.Hours + EXCLUDED.Hours;
+                """,
+                (emp_id, pid, hours)
+            )
             conn.commit()
-        except Exception as e:
+            flash("Hours updated for employee on this project.", "success")
+        except Exception:
             conn.rollback()
             flash(
-                f"Error: Ensure you selected an employee and hours are between 0-999", "danger")
+                "Error: Ensure you selected an employee and hours are between 0-999.",
+                "danger"
+            )
 
-    # Query to retrieve all employees on this project with Full Name and Hours
-    cur.execute("SELECT Fname, Minit, Lname, Hours FROM Works_on INNER JOIN Employee ON Employee.Ssn = Works_on.Essn WHERE Pno = %s", (pid,))
+    cur.execute(
+        """
+        SELECT Fname, Minit, Lname, Hours
+        FROM Works_on
+        INNER JOIN Employee ON Employee.Ssn = Works_on.Essn
+        WHERE Pno = %s
+        """,
+        (pid,)
+    )
     emps_on_project = cur.fetchall()
 
     cur.execute("SELECT Ssn, Fname, Minit, Lname FROM Employee ORDER BY Fname")
@@ -309,12 +425,13 @@ def project(pid):
     cur.execute("SELECT Pname FROM Project WHERE Pnumber = %s", (pid,))
     proj_name = cur.fetchone()
 
-    print(proj_name)
-
     cur.close()
     conn.close()
     return render_template(
-        "project.html", proj_name=proj_name, emps_on_project=emps_on_project, employees=employees
+        "project.html",
+        proj_name=proj_name,
+        emps_on_project=emps_on_project,
+        employees=employees
     )
 
 
@@ -350,7 +467,7 @@ def managers():
 
 
 @app.route("/employee/add", methods=["GET", "POST"])
-@login_required
+@admin_required
 def add_employee():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -378,9 +495,12 @@ def add_employee():
         try:
             cur.execute("""
                 INSERT INTO employee
-                (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate))
+                (fname, minit, lname, ssn, address, sex, salary,
+                 super_ssn, dno, bdate, empdate)
+                VALUES (%s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s)
+            """, (fname, minit, lname, ssn, address, sex, salary,
+                  super_ssn, dno, bdate, empdate))
 
             conn.commit()
             flash("Employee added successfully!", "success")
@@ -404,7 +524,7 @@ def add_employee():
 
 
 @app.route("/employee/<ssn>/edit", methods=["GET", "POST"])
-@login_required
+@admin_required
 def edit_employee(ssn):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -414,14 +534,18 @@ def edit_employee(ssn):
 
     if not emp:
         flash("Employee not found.", "danger")
+        cur.close()
+        conn.close()
         return redirect(url_for("employees"))
 
     cur.execute("SELECT dnumber, dname FROM department ORDER BY dname;")
     departments = cur.fetchall()
 
     cur.execute(
-        "SELECT ssn, fname || ' ' || minit || '. ' || lname FROM employee WHERE ssn <> %s;",
-        (ssn,))
+        "SELECT ssn, fname || ' ' || minit || '. ' || lname "
+        "FROM employee WHERE ssn <> %s ORDER BY fname;",
+        (ssn,)
+    )
     supervisors = cur.fetchall()
 
     if request.method == "POST":
@@ -455,7 +579,7 @@ def edit_employee(ssn):
 
 
 @app.route("/employee/<ssn>/delete")
-@login_required
+@admin_required
 def delete_employee(ssn):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -466,6 +590,8 @@ def delete_employee(ssn):
     if dept_mgr:
         flash("Cannot delete employee: They are a department manager.",
               "danger")
+        cur.close()
+        conn.close()
         return redirect(url_for("employees"))
 
     cur.execute("SELECT 1 FROM employee WHERE super_ssn = %s LIMIT 1;",
@@ -474,6 +600,8 @@ def delete_employee(ssn):
 
     if emp_mgr:
         flash("Cannot delete employee: They are a supervisor.", "danger")
+        cur.close()
+        conn.close()
         return redirect(url_for("employees"))
 
     try:
@@ -492,7 +620,194 @@ def delete_employee(ssn):
         conn.rollback()
         flash("Error deleting employee: " + str(e), "danger")
 
+    cur.close()
+    conn.close()
     return redirect(url_for("employees"))
+
+
+@app.route("/import", methods=["GET", "POST"])
+@admin_required
+def import_data():
+    if request.method == "POST":
+
+        if 'file' not in request.files:
+            flash("No file selected", "danger")
+            return redirect(url_for("import_data"))
+        
+        file = request.files['file']
+        table_name = request.form.get('table', '').strip().lower()
+        
+        if file.filename == '':
+            flash("No file selected", "danger")
+            return redirect(url_for("import_data"))
+        
+        if not allowed_file(file.filename):
+            flash("Invalid file format. Only .xlsx files are allowed", "danger")
+            return redirect(url_for("import_data"))
+        
+        if table_name not in ['employee', 'project', 'department', 'dependent', 'works_on']:
+            flash("Invalid table selected", "danger")
+            return redirect(url_for("import_data"))
+        
+        filename = secure_filename(file.filename)
+        file_path = os.path.join('/tmp', filename)
+        file.save(file_path)
+        
+        try:
+
+            rows, parse_error = parse_excel_file(file_path, table_name)
+            if parse_error:
+                flash(parse_error, "danger")
+                return redirect(url_for("import_data"))
+            
+            if not rows:
+                flash("No data found in Excel file", "warning")
+                return redirect(url_for("import_data"))
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            successful_rows = 0
+            failed_rows = []
+            
+            for row_num, row_data in rows:
+                try:
+                    if table_name == 'employee':
+                        is_valid, error_msg = validate_employee_row(row_data, row_num)
+                        if not is_valid:
+                            failed_rows.append(error_msg)
+                            continue
+
+                        cur.execute("SELECT 1 FROM employee WHERE ssn = %s", (row_data['ssn'],))
+                        if cur.fetchone():
+                            failed_rows.append(f"Row {row_num}: Employee with SSN {row_data['ssn']} already exists")
+                            continue
+
+                        cur.execute("""
+                            INSERT INTO employee
+                            (fname, minit, lname, ssn, address, sex, salary, super_ssn, dno, bdate, empdate)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            row_data.get('fname'),
+                            row_data.get('minit', ''),
+                            row_data.get('lname'),
+                            row_data.get('ssn'),
+                            row_data.get('address'),
+                            str(row_data.get('sex', '')).upper(),
+                            int(row_data.get('salary', 0)),
+                            row_data.get('super_ssn'),
+                            int(row_data.get('dno', 0)),
+                            row_data.get('bdate'),
+                            row_data.get('empdate')
+                        ))
+                        successful_rows += 1
+                    
+                    elif table_name == 'project':
+                        if not all(row_data.get(field) for field in ['pname', 'pnumber', 'plocation', 'dnum']):
+                            failed_rows.append(f"Row {row_num}: Missing required fields")
+                            continue
+
+                        cur.execute("SELECT 1 FROM project WHERE pnumber = %s", (int(row_data['pnumber']),))
+                        if cur.fetchone():
+                            failed_rows.append(f"Row {row_num}: Project with number {row_data['pnumber']} already exists")
+                            continue
+                        
+                        cur.execute("""
+                            INSERT INTO project (pname, pnumber, plocation, dnum)
+                            VALUES (%s, %s, %s, %s)
+                        """, (
+                            row_data.get('pname'),
+                            int(row_data.get('pnumber')),
+                            row_data.get('plocation'),
+                            int(row_data.get('dnum'))
+                        ))
+                        successful_rows += 1
+                    
+                    elif table_name == 'department':
+
+                        if not all(row_data.get(field) for field in ['dname', 'dnumber']):
+                            failed_rows.append(f"Row {row_num}: Missing required fields (dname, dnumber)")
+                            continue
+
+                        cur.execute("SELECT 1 FROM department WHERE dnumber = %s", (int(row_data['dnumber']),))
+                        if cur.fetchone():
+                            failed_rows.append(f"Row {row_num}: Department with number {row_data['dnumber']} already exists")
+                            continue
+                        
+                        cur.execute("""
+                            INSERT INTO department (dname, dnumber, mgr_ssn)
+                            VALUES (%s, %s, %s)
+                        """, (
+                            row_data.get('dname'),
+                            int(row_data.get('dnumber')),
+                            row_data.get('mgr_ssn')
+                        ))
+                        successful_rows += 1
+                    
+                    elif table_name == 'dependent':
+                        if not all(row_data.get(field) for field in ['essn', 'dependent_name', 'sex', 'bdate', 'relationship']):
+                            failed_rows.append(f"Row {row_num}: Missing required fields")
+                            continue
+                        
+                        cur.execute("""
+                            INSERT INTO dependent (essn, dependent_name, sex, bdate, relationship)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (
+                            row_data.get('essn'),
+                            row_data.get('dependent_name'),
+                            str(row_data.get('sex', '')).upper(),
+                            row_data.get('bdate'),
+                            row_data.get('relationship')
+                        ))
+                        successful_rows += 1
+                    
+                    elif table_name == 'works_on':
+                        if not all(row_data.get(field) for field in ['essn', 'pno', 'hours']):
+                            failed_rows.append(f"Row {row_num}: Missing required fields (essn, pno, hours)")
+                            continue
+                        
+                        cur.execute("""
+                            INSERT INTO works_on (essn, pno, hours)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (essn, pno) DO UPDATE SET hours = works_on.hours + EXCLUDED.hours
+                        """, (
+                            row_data.get('essn'),
+                            int(row_data.get('pno')),
+                            float(row_data.get('hours', 0))
+                        ))
+                        successful_rows += 1
+                
+                except psycopg2.errors.ForeignKeyViolation as e:
+                    conn.rollback()
+                    failed_rows.append(f"Row {row_num}: Foreign key constraint violated - {str(e)}")
+                except psycopg2.errors.UniqueViolation as e:
+                    conn.rollback()
+                    failed_rows.append(f"Row {row_num}: Duplicate entry - record already exists")
+                except Exception as e:
+                    conn.rollback()
+                    failed_rows.append(f"Row {row_num}: {str(e)}")
+
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            if successful_rows > 0:
+                flash(f"Successfully imported {successful_rows} rows into {table_name} table", "success")
+            
+            if failed_rows:
+                flash(f"Failed to import {len(failed_rows)} rows. Errors: " + " | ".join(failed_rows[:5]) + 
+                      (f" and {len(failed_rows) - 5} more..." if len(failed_rows) > 5 else ""), "warning")
+            
+            return redirect(url_for("import_data"))
+        
+        except Exception as e:
+            flash(f"Error processing Excel file: {str(e)}", "danger")
+            return redirect(url_for("import_data"))
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+    
+    return render_template("import_data.html")
 
 
 @app.route("/logout")
