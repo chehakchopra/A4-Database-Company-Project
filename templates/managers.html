@@ -5,8 +5,7 @@
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%;">
   <thead style="background:#0074D9; color:white; text-align:left;">
     <tr>
-      <th>Department Name</th>
-      <th>Department Number</th>
+      <th>Department Name & Number</th>
       <th>Manager Name</th>
       <th>Employee Count</th>
       <th>Total Hours</th>
@@ -15,8 +14,7 @@
   <tbody>
     {% for row in managers %}
     <tr>
-      <td>{{ row[0] }}</td>
-      <td>{{ row[1] }}</td>
+      <td>{{ row[0] }} ({{ row[1] }})</td>
       <td>{{ row[2] }}</td>
       <td>{{ row[3] }}</td>
       <td>{{ row[4] }}</td>
