@@ -55,8 +55,21 @@ Assignment 4 Project Github Repo
 
 ## About Indexes
 
-* `CREATE INDEX idx_employee_ssn ON Employee (Ssn);`
-  * SSN is most common search/join condition on the employee table
-* `CREATE INDEX idx_workson_pno ON Works_On (Pno);`
-  * Pno is one of the more commonly used join condition values
-* Both indexes should improve the performance of retrieving data from their respective tables
+All primary keys already have indexes in postgresql, so we chose indexes for other fields
+
+```postgresql
+CREATE INDEX idx_workson_pno ON Works_On (Pno);
+CREATE INDEX idx_workson_essn ON Works_On (Essn);
+CREATE INDEX idx_dept_dname ON Department (Dname);
+```
+
+Our indexes:
+
+* Should improve the performance of retrieving data from their respective tables
+* are Our overall most commonly used fields in JOIN or WHERE conditions
+* All speed up the retrieval time of:
+  * The Employee data for the Home/Employee page (A2) and CSV (Bonus).
+  * The Project data on Projects (A3)
+* `idx_workson_pno` & `idx_workson_essn` speed up the retrieval time of the Employee data on the Project page (A4)
+* `idx_workson_essn` & `idx_dept_dname` speed up the retrieval time of Department data on the Managers page (A6)
+* In addition to aforementioned uses, `idx_dept_name` also improves the retrieval time of Department data (names) for dropdowns present on the Add/Edit Employee pages (A5)
