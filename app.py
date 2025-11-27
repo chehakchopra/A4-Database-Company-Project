@@ -15,23 +15,24 @@ dbuser = "postgres"
 dbpwd = ""
 dbport = "5432"
 
+
+app = Flask(__name__)
 # Ask user for dabase input
 print("""Please input the following information.
         If values are not entered, the default will instead be used.""")
 print("Database user (default postgres): ")
-str = input()
-dbuser = str if len(str) > 0 else "postgres"
-while len(str) <= 0:
+input_str = input().strip()
+dbuser = input_str if len(input_str) > 0 else "postgres"
+input_str = ''
+while len(input_str) <= 0:
     # Source - https://stackoverflow.com/questions/52079846/how-to-hide-input-in-python-3-6
     # Posted by Muhammadabdulloh Komilov, modified by community. See post 'Timeline' for change history
     # Retrieved 2025-11-26, License - CC BY-SA 4.0
-    str = getpass.getpass("Database password (required): ")
-dbpwd = str
+    input_str = getpass.getpass("Database password (required): ")
+dbpwd = input_str
 print("Port number (default 5432): ")
-str = input()
-dbport = str if len(str) > 0 else "5432"
-
-app = Flask(__name__)
+input_str = input().strip()
+dbport = input_str if len(input_str) > 0 else "5432"
 app.secret_key = "supersecretkey"
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
@@ -42,7 +43,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def get_db_connection():
     conn = psycopg2.connect(
         host="localhost",
-        dbname="temp_company_db",
+        dbname="company_db",
         user=dbuser,
         password=dbpwd,
         port=dbport
